@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-labelledby="title">
+  <title id="title">KameCard App-Icon</title>
+  <rect width="192" height="192" rx="40" fill="#173f3d"/>
+  <rect x="54" y="34" width="98" height="126" rx="17" transform="rotate(7 103 97)" fill="#ef7b69"/>
+  <rect x="39" y="38" width="104" height="126" rx="18" fill="#fff8ed"/>
+  <ellipse cx="89" cy="91" rx="32" ry="25" fill="#5d9b83"/>
+  <circle cx="124" cy="91" r="12" fill="#5d9b83"/>
+  <circle cx="128" cy="88" r="2.5" fill="#173f3d"/>
+  <path d="M64 73 55 64M64 109l-9 9M109 73l9-9M109 109l9 9" fill="none" stroke="#5d9b83" stroke-width="8" stroke-linecap="round"/>
+  <path d="M73 91h32M89 68v46M66 78c13 8 33 8 46 0M66 104c13-8 33-8 46 0" fill="none" stroke="#fff8ed" stroke-width="3.5" stroke-linecap="round" opacity=".9"/>
+  <rect x="57" y="135" width="68" height="7" rx="3.5" fill="#173f3d" opacity=".82"/>
+</svg>
