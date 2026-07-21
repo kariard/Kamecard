@@ -1,11 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageIntro } from '../components/PageIntro'
+import {
+  createTypedAnswerAttempt,
+  submitTypedAnswer,
+  type StudyAnswerMethod,
+  type TypedAnswerAttempt,
+} from '../features/study'
 import type { Card, Deck, StudyDirection } from '../types/models'
 
 interface StudySetupViewProps {
   deck: Deck
-  onStart: (direction: StudyDirection) => void
+  onStart: (
+    direction: StudyDirection,
+    answerMethod: StudyAnswerMethod,
+  ) => void
 }
 
 const directionOptions: Array<{
@@ -34,8 +43,30 @@ const directionOptions: Array<{
   },
 ]
 
+const answerMethodOptions: Array<{
+  value: StudyAnswerMethod
+  title: string
+  description: string
+  preview: string
+}> = [
+  {
+    value: 'self-assessment',
+    title: 'Selbst bewerten',
+    description: 'Zeige die Antwort an und entscheide selbst, ob du sie wusstest.',
+    preview: '✓ / ×',
+  },
+  {
+    value: 'typed-answer',
+    title: 'Antwort eintippen',
+    description: 'Tippe deine Antwort ein und lasse KameCard sie direkt prüfen.',
+    preview: 'Aa',
+  },
+]
+
 export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
   const [direction, setDirection] = useState<StudyDirection>('front-to-back')
+  const [answerMethod, setAnswerMethod] =
+    useState<StudyAnswerMethod>('self-assessment')
 
   return (
     <main id="main-content" className="page-shell page-shell--narrow">
@@ -45,7 +76,7 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
         description={`${deck.cards.length} ${deck.cards.length === 1 ? 'Karte wartet' : 'Karten warten'} auf dich. Falsche Antworten kommen später noch einmal.`}
       />
 
-      <section className="setup-panel surface" aria-labelledby="study-direction-title">
+      <section className="setup-panel surface" aria-label="Einstellungen der Lernrunde">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Schritt 1</p>
@@ -72,7 +103,45 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
             </label>
           ))}
         </div>
-        <button className="button button--primary button--wide" type="button" onClick={() => onStart(direction)}>
+
+        <div className="section-heading answer-method-heading">
+          <div>
+            <p className="eyebrow">Schritt 2</p>
+            <h2 id="study-answer-method-title">Wie möchtest du antworten?</h2>
+          </div>
+        </div>
+        <div
+          className="direction-grid answer-method-grid"
+          role="radiogroup"
+          aria-labelledby="study-answer-method-title"
+        >
+          {answerMethodOptions.map((option) => (
+            <label
+              key={option.value}
+              className={`direction-option answer-method-option ${answerMethod === option.value ? 'direction-option--selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="study-answer-method"
+                value={option.value}
+                checked={answerMethod === option.value}
+                onChange={() => setAnswerMethod(option.value)}
+              />
+              <span className="direction-option__check" aria-hidden="true" />
+              <span className="direction-option__preview" aria-hidden="true">
+                {option.preview}
+              </span>
+              <strong>{option.title}</strong>
+              <span>{option.description}</span>
+            </label>
+          ))}
+        </div>
+
+        <button
+          className="button button--primary button--wide"
+          type="button"
+          onClick={() => onStart(direction, answerMethod)}
+        >
           Lernrunde starten
         </button>
       </section>
@@ -87,6 +156,7 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
 
 interface StudySessionViewProps {
   deckName: string
+  answerMethod: StudyAnswerMethod
   prompt: string
   answer: string
   isFlipped: boolean
@@ -96,12 +166,22 @@ interface StudySessionViewProps {
   correctCount: number
   incorrectCount: number
   onReveal: () => void
-  onRate: (knew: boolean) => void
+  onRate: (knew: boolean) => boolean
+  onContinueAfterTypedAnswer: (isComplete: boolean) => void
   onQuit: () => void
+}
+
+interface TypedAnswerFeedback {
+  prompt: string
+  input: string
+  expected: string
+  knewAnswer: boolean
+  isComplete: boolean
 }
 
 export function StudySessionView({
   deckName,
+  answerMethod,
   prompt,
   answer,
   isFlipped,
@@ -112,9 +192,67 @@ export function StudySessionView({
   incorrectCount,
   onReveal,
   onRate,
+  onContinueAfterTypedAnswer,
   onQuit,
 }: StudySessionViewProps) {
   const [confirmQuit, setConfirmQuit] = useState(false)
+  const [typedAnswer, setTypedAnswer] = useState('')
+  const [typedFeedback, setTypedFeedback] =
+    useState<TypedAnswerFeedback | null>(null)
+  const typedAnswerInputRef = useRef<HTMLInputElement>(null)
+  const typedAttemptRef = useRef<TypedAnswerAttempt<boolean>>(
+    createTypedAnswerAttempt(),
+  )
+  const usesTypedAnswer = answerMethod === 'typed-answer'
+  const displayedPrompt = typedFeedback?.prompt ?? prompt
+
+  useEffect(() => {
+    if (usesTypedAnswer && typedFeedback === null) {
+      const frameId = window.requestAnimationFrame(() => {
+        typedAnswerInputRef.current?.focus()
+        typedAnswerInputRef.current?.scrollIntoView({
+          block: 'center',
+          inline: 'nearest',
+        })
+      })
+
+      return () => window.cancelAnimationFrame(frameId)
+    }
+  }, [displayedPrompt, typedFeedback, usesTypedAnswer])
+
+  function continueAfterTypedAnswer() {
+    if (!typedFeedback) return
+
+    const isComplete = typedFeedback.isComplete
+    typedAttemptRef.current = createTypedAnswerAttempt()
+    setTypedAnswer('')
+    setTypedFeedback(null)
+    onContinueAfterTypedAnswer(isComplete)
+  }
+
+  function handleTypedAnswerSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (typedFeedback) {
+      continueAfterTypedAnswer()
+      return
+    }
+
+    const submittedAttempt = submitTypedAnswer(
+      typedAttemptRef.current,
+      typedAnswer,
+      answer,
+      onRate,
+    )
+    typedAttemptRef.current = submittedAttempt
+    setTypedFeedback({
+      prompt,
+      input: submittedAttempt.submission.input,
+      expected: submittedAttempt.submission.expected,
+      knewAnswer: submittedAttempt.submission.knewAnswer,
+      isComplete: submittedAttempt.submission.rateResult,
+    })
+  }
 
   return (
     <main id="main-content" className="study-page">
@@ -146,45 +284,160 @@ export function StudySessionView({
         </div>
       </section>
 
-      <section className="study-stage" aria-live="polite">
-        <button
-          className={`flip-card ${isFlipped ? 'flip-card--flipped' : ''}`}
-          type="button"
-          onClick={() => {
-            if (!isFlipped) onReveal()
-          }}
-          aria-label={isFlipped ? `Antwort: ${answer}` : `Karte: ${prompt}. Antwort anzeigen`}
-        >
-          <span className="flip-card__inner">
-            <span className="flip-card__face flip-card__front">
+      <section
+        className="study-stage"
+        aria-live={usesTypedAnswer ? undefined : 'polite'}
+      >
+        {usesTypedAnswer ? (
+          <>
+            <div className="typed-answer-card">
               <span className="field-caption">Aufgabe</span>
-              <strong>{prompt}</strong>
-              <span className="flip-card__hint">Antippen zum Umdrehen</span>
-            </span>
-            <span className="flip-card__face flip-card__back">
-              <span className="field-caption">Antwort</span>
-              <strong>{answer}</strong>
-              <span className="flip-card__hint">Wie gut wusstest du es?</span>
-            </span>
-          </span>
-        </button>
-
-        <div className="study-actions">
-          {!isFlipped ? (
-            <button className="button button--primary button--study" type="button" onClick={onReveal}>
-              Antwort anzeigen
-            </button>
-          ) : (
-            <div className="rating-actions">
-              <button className="button button--incorrect" type="button" onClick={() => onRate(false)}>
-                <span aria-hidden="true">×</span> Nicht gewusst
-              </button>
-              <button className="button button--correct" type="button" onClick={() => onRate(true)}>
-                <span aria-hidden="true">✓</span> Gewusst
-              </button>
+              <strong>{displayedPrompt}</strong>
+              <span className="flip-card__hint">
+                Tippe die passende Antwort ein.
+              </span>
             </div>
-          )}
-        </div>
+
+            <form
+              className="typed-answer-form"
+              onSubmit={handleTypedAnswerSubmit}
+            >
+              <label htmlFor="typed-study-answer">Deine Antwort</label>
+              <input
+                ref={typedAnswerInputRef}
+                id="typed-study-answer"
+                className="typed-answer-input"
+                type="text"
+                autoFocus
+                value={typedAnswer}
+                readOnly={typedFeedback !== null}
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="send"
+                aria-describedby={
+                  typedFeedback
+                    ? 'typed-answer-feedback'
+                    : 'typed-answer-help'
+                }
+                aria-invalid={
+                  typedFeedback ? !typedFeedback.knewAnswer : undefined
+                }
+                onChange={(event) => setTypedAnswer(event.target.value)}
+              />
+              {!typedFeedback ? (
+                <p id="typed-answer-help" className="muted-copy">
+                  Mit Enter oder dem Button kannst du deine Antwort prüfen.
+                </p>
+              ) : (
+                <div
+                  id="typed-answer-feedback"
+                  className={`typed-answer-feedback ${
+                    typedFeedback.knewAnswer
+                      ? 'typed-answer-feedback--correct'
+                      : 'typed-answer-feedback--incorrect'
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <strong>
+                    {typedFeedback.knewAnswer
+                      ? 'Richtig!'
+                      : 'Noch nicht richtig.'}
+                  </strong>
+                  {typedFeedback.knewAnswer ? (
+                    <p>Deine Antwort stimmt mit der erwarteten Antwort überein.</p>
+                  ) : (
+                    <dl className="typed-answer-comparison">
+                      <div>
+                        <dt>Deine Antwort</dt>
+                        <dd>
+                          {typedFeedback.input || 'Keine Antwort eingegeben'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Korrekte Antwort</dt>
+                        <dd>{typedFeedback.expected}</dd>
+                      </div>
+                    </dl>
+                  )}
+                </div>
+              )}
+
+              <div className="typed-answer-actions">
+                <button
+                  className="button button--primary button--study"
+                  type="submit"
+                >
+                  {typedFeedback ? 'Nächste Karte' : 'Antwort prüfen'}
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <button
+              className={`flip-card ${isFlipped ? 'flip-card--flipped' : ''}`}
+              type="button"
+              onClick={() => {
+                if (!isFlipped) onReveal()
+              }}
+              aria-label={
+                isFlipped
+                  ? `Antwort: ${answer}`
+                  : `Karte: ${prompt}. Antwort anzeigen`
+              }
+            >
+              <span className="flip-card__inner">
+                <span className="flip-card__face flip-card__front">
+                  <span className="field-caption">Aufgabe</span>
+                  <strong>{prompt}</strong>
+                  <span className="flip-card__hint">
+                    Antippen zum Umdrehen
+                  </span>
+                </span>
+                <span className="flip-card__face flip-card__back">
+                  <span className="field-caption">Antwort</span>
+                  <strong>{answer}</strong>
+                  <span className="flip-card__hint">
+                    Wie gut wusstest du es?
+                  </span>
+                </span>
+              </span>
+            </button>
+
+            <div className="study-actions">
+              {!isFlipped ? (
+                <button
+                  className="button button--primary button--study"
+                  type="button"
+                  onClick={onReveal}
+                >
+                  Antwort anzeigen
+                </button>
+              ) : (
+                <div className="rating-actions">
+                  <button
+                    className="button button--correct"
+                    type="button"
+                    onClick={() => onRate(true)}
+                  >
+                    <span aria-hidden="true">✓</span> Gewusst
+                  </button>
+                  <button
+                    className="button button--incorrect"
+                    type="button"
+                    onClick={() => onRate(false)}
+                  >
+                    <span aria-hidden="true">×</span> Nicht gewusst
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       <div className="study-score" aria-label="Antworten in dieser Runde">

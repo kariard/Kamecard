@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { downloadDeckBackup, downloadFullBackup, parseBackupJson } from './features/backup'
-import { isStudySessionComplete } from './features/study'
+import {
+  isStudySessionComplete,
+  type StudyAnswerMethod,
+} from './features/study'
 import { useKamecardData } from './hooks/useKamecardData'
 import { useStudyFlow } from './hooks/useStudyFlow'
 import type { ImportedCardDraft, StudyDirection } from './types/models'
@@ -60,14 +63,18 @@ export default function App() {
     setRoute({ name: 'overview' })
   }
 
-  function beginStudy(direction: StudyDirection, difficultOnly = false) {
+  function beginStudy(
+    direction: StudyDirection,
+    answerMethod: StudyAnswerMethod = 'self-assessment',
+    difficultOnly = false,
+  ) {
     if (!selectedDeck) return
     const difficultIds = new Set(study.difficultCardIds)
     const cards = difficultOnly
       ? selectedDeck.cards.filter((card) => difficultIds.has(card.id))
       : selectedDeck.cards
     if (!cards.length) return
-    study.begin(direction, cards)
+    study.begin(direction, cards, answerMethod)
     setRoute({ name: 'study-session', deckId: selectedDeck.id })
   }
 
@@ -182,12 +189,19 @@ export default function App() {
       return <StudySetupView deck={selectedDeck} onStart={beginStudy} />
     }
 
-    if (route.name === 'study-session' && study.session && study.current && study.progress) {
+    if (
+      route.name === 'study-session' &&
+      study.session &&
+      study.progress &&
+      (study.current || study.session.answerMethod === 'typed-answer')
+    ) {
+      const answerMethod = study.session.answerMethod
       return (
         <StudySessionView
           deckName={selectedDeck.name}
-          prompt={study.current.promptText}
-          answer={study.current.answerText}
+          answerMethod={answerMethod}
+          prompt={study.current?.promptText ?? ''}
+          answer={study.current?.answerText ?? ''}
           isFlipped={study.isFlipped}
           progress={study.progress.percent}
           completedCards={study.progress.completedCards}
@@ -197,9 +211,16 @@ export default function App() {
           onReveal={study.reveal}
           onRate={(knew) => {
             const result = study.rate(knew)
-            if (!result) return
+            if (!result) return false
             replaceStudyCard(selectedDeck.id, result.updatedCard)
-            if (isStudySessionComplete(result.session)) {
+            const isComplete = isStudySessionComplete(result.session)
+            if (answerMethod === 'self-assessment' && isComplete) {
+              setRoute({ name: 'study-complete', deckId: selectedDeck.id })
+            }
+            return isComplete
+          }}
+          onContinueAfterTypedAnswer={(isComplete) => {
+            if (isComplete) {
               setRoute({ name: 'study-complete', deckId: selectedDeck.id })
             }
           }}
@@ -209,19 +230,28 @@ export default function App() {
     }
 
     if (route.name === 'study-complete' && study.session) {
+      const completedSession = study.session
       const difficultCards = study.difficultCardIds.flatMap((cardId) => {
         const card = selectedDeck.cards.find((entry) => entry.id === cardId)
-        const mistakeCount = study.session?.incorrectByCardId[cardId] ?? 0
+        const mistakeCount = completedSession.incorrectByCardId[cardId] ?? 0
         return card ? [{ card, mistakeCount }] : []
       })
       return (
         <StudyCompleteView
           deckName={selectedDeck.name}
-          correctCount={study.session.correctAnswers}
-          incorrectCount={study.session.incorrectAnswers}
+          correctCount={completedSession.correctAnswers}
+          incorrectCount={completedSession.incorrectAnswers}
           difficultCards={difficultCards}
-          onRepeat={() => beginStudy(study.session?.direction ?? 'front-to-back')}
-          onStudyDifficult={() => beginStudy(study.session?.direction ?? 'front-to-back', true)}
+          onRepeat={() =>
+            beginStudy(completedSession.direction, completedSession.answerMethod)
+          }
+          onStudyDifficult={() =>
+            beginStudy(
+              completedSession.direction,
+              completedSession.answerMethod,
+              true,
+            )
+          }
           onBackToDeck={() => openDeck(selectedDeck.id)}
         />
       )

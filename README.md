@@ -16,8 +16,11 @@ erfolgreichen Laden auch offline verwendet werden. Das Repository heißt
 - Automatisches Beispielddeck „Japanisch – Vokale & K-Reihe“ beim ersten Start
 - Lernrichtung wählen: Vorderseite → Rückseite, Rückseite → Vorderseite oder
   gemischt
+- Vor der Session zwischen „Selbst bewerten“ und „Antwort eintippen“ wählen
 - Antworten aufdecken und anschließend mit „Gewusst“ oder „Nicht gewusst“
   bewerten
+- Eingetippte Antworten nachvollziehbar normalisieren, prüfen und mit der
+  richtigen Lösung vergleichen
 - Falsch beantwortete Karten nach einigen anderen Karten erneut einreihen
 - Schwächere Karten in späteren Sessions tendenziell früher zeigen
 - Lernfortschritt, Trefferzähler, Streak und Mastery-Level lokal speichern
@@ -101,6 +104,31 @@ Der statische Produktionsbuild landet in `dist/`. Vite ist für den
 Repository-Pfad `/Kamecard/` konfiguriert; dadurch zeigen Asset- und
 Service-Worker-Pfade auf GitHub Pages auf den richtigen Ort.
 
+## Lernmodus und Antwortprüfung
+
+Vor einer Session stehen zwei Antwortmethoden zur Wahl:
+
+- **Selbst bewerten** ist die Standardmethode. Zuerst wird die Antwort
+  aufgedeckt, danach bewertet der Nutzer sie mit „Gewusst“ oder „Nicht gewusst“.
+- **Antwort eintippen** funktioniert für Vorderseite → Rückseite,
+  Rückseite → Vorderseite und gemischte Sessions. Enter oder „Antwort prüfen“
+  wertet die Eingabe aus. Anschließend zeigt KameCard eindeutig richtig oder
+  falsch an; bei einer falschen Antwort bleiben die eigene Eingabe und die
+  richtige Lösung sichtbar. Erst ein weiteres Enter oder „Nächste Karte“ führt
+  weiter.
+
+Für den Textvergleich normalisiert KameCard beide Antworten vorher:
+
+1. Unicode wird mit NFKC normalisiert.
+2. Leerraum am Anfang und Ende wird entfernt.
+3. Mehrere aufeinanderfolgende Leerzeichen oder andere Whitespaces werden zu
+   einem Leerzeichen zusammengefasst.
+4. Groß- und Kleinschreibung wird nur bei lateinischen Zeichen ignoriert.
+
+Die Prüfung erfindet bewusst keine Synonyme, Schreibvarianten oder Romaji. Eine
+Alternative gilt nur dann als richtig, wenn sie nach diesen klaren Regeln mit
+der gespeicherten Antwort übereinstimmt.
+
 ## Karten importieren
 
 Im Importdialog kann Text direkt eingefügt oder eine `.txt`- bzw.
@@ -133,9 +161,34 @@ Dabei werden ungültige Zeilen, Dubletten innerhalb des Imports und bereits im
 Deck vorhandene identische Karten getrennt ausgewiesen. Fehlerhafte Zeilen
 blockieren gültige Karten nicht.
 
-Der Button „KI-Importprompt kopieren“ kopiert lediglich eine Formatvorlage in die
-Zwischenablage. KameCard ruft selbst keinen KI-Dienst auf und sendet dabei keine
-Inhalte nach außen.
+### Optionaler KI-Ablauf
+
+Der KI-Import ist eine manuelle Vorbereitungshilfe und keine KI-Integration:
+
+1. Das vollständige Ausgangsmaterial bei einem beliebigen KI-Werkzeug einfügen
+   oder als Datei hochladen.
+2. In KameCard „KI-Importprompt kopieren“ wählen, die Felder für Vorder- und
+   Rückseite bei Bedarf anpassen und den Prompt an die KI senden.
+3. Das erzeugte TSV-Ergebnis kopieren oder als `.tsv`- beziehungsweise
+   `.txt`-Datei speichern; alternativ kann das Werkzeug die UTF-8-Datei
+   `kamecard-import.tsv` bereitstellen.
+4. Den TSV-Text in KameCard einfügen oder die gespeicherte Datei auswählen.
+5. Die lokale Vorschau einschließlich ungültiger Zeilen und Dubletten prüfen und
+   die Karten erst danach importieren.
+
+Der kopierte Prompt verlangt eine vollständige Analyse des Materials, kompakte
+und dennoch vollständige Karten sowie ausschließlich belegte Inhalte. Er
+verbietet erfundene Ergänzungen, Überschriften, Markdown und Erklärtext. Jede
+Ausgabezeile muss genau eine Vorder- und Rückseite enthalten, getrennt durch
+einen echten einzelnen Tabulator. Innerhalb der beiden Kartenhälften sind keine
+weiteren Tabulatoren oder Zeilenumbrüche erlaubt. Unicode muss als UTF-8 erhalten
+bleiben und Dubletten sollen entfernt werden.
+
+KameCard stellt keine Verbindung zu einem KI-Dienst her, lädt keine Datei zu
+einer KI hoch und sendet keine Karteninhalte nach außen. Nutzer entscheiden
+außerhalb der App selbst, welches Werkzeug sie verwenden und welche Inhalte sie
+dort teilen. Vertrauliches Material sollte nicht an externe Werkzeuge gegeben
+werden.
 
 ## Export und Backup
 

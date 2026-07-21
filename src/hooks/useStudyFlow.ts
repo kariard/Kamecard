@@ -5,6 +5,7 @@ import {
   getDifficultCardIds,
   getStudyProgress,
   rateCurrentCard,
+  type StudyAnswerMethod,
   type StudyAnswerResult,
   type StudySession,
 } from '../features/study'
@@ -21,8 +22,14 @@ export function useStudyFlow(cards: Card[]) {
   const progress = session ? getStudyProgress(session) : undefined
   const difficultCardIds = session ? getDifficultCardIds(session) : []
 
-  function begin(direction: StudyDirection, selectedCards: Card[] = cards) {
-    setSession(createStudySession(selectedCards, direction))
+  function begin(
+    direction: StudyDirection,
+    selectedCards: Card[] = cards,
+    answerMethod: StudyAnswerMethod = 'self-assessment',
+  ) {
+    setSession(
+      createStudySession(selectedCards, direction, Math.random, answerMethod),
+    )
     setIsFlipped(false)
   }
 

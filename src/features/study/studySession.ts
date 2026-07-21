@@ -7,6 +7,8 @@ import { nowIsoString } from '../../utils/date'
 
 export type ResolvedStudyDirection = Exclude<StudyDirection, 'mixed'>
 
+export type StudyAnswerMethod = 'self-assessment' | 'typed-answer'
+
 export interface StudyQueueItem {
   cardId: string
   direction: ResolvedStudyDirection
@@ -14,6 +16,7 @@ export interface StudyQueueItem {
 
 export interface StudySession {
   direction: StudyDirection
+  answerMethod: StudyAnswerMethod
   queue: StudyQueueItem[]
   totalCards: number
   completedCardIds: string[]
@@ -102,6 +105,7 @@ export function createStudySession(
   cards: readonly Card[],
   direction: StudyDirection,
   random: () => number = Math.random,
+  answerMethod: StudyAnswerMethod = 'self-assessment',
 ): StudySession {
   const queue = orderCardsForStudy(cards, random).map((card) => ({
     cardId: card.id,
@@ -110,6 +114,7 @@ export function createStudySession(
 
   return {
     direction,
+    answerMethod,
     queue,
     totalCards: queue.length,
     completedCardIds: [],

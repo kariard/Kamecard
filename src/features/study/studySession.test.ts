@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Card, MasteryLevel } from '../../types/models'
 import {
   createStudySession,
+  getCurrentStudyCard,
   getStudyProgress,
   orderCardsForStudy,
   rateCurrentCard,
@@ -25,6 +26,60 @@ function makeCard(id: string, masteryLevel: MasteryLevel = 0): Card {
 }
 
 describe('study session', () => {
+  it('nutzt standardmäßig Selbstbewertung und übernimmt die gewählte Antwortmethode', () => {
+    const card = makeCard('a')
+
+    expect(
+      createStudySession([card], 'front-to-back', () => 0.5).answerMethod,
+    ).toBe('self-assessment')
+    expect(
+      createStudySession(
+        [card],
+        'front-to-back',
+        () => 0.5,
+        'typed-answer',
+      ).answerMethod,
+    ).toBe('typed-answer')
+  })
+
+  it('liefert bei Vorderseite zu Rückseite die Rückseite als erwartete Antwort', () => {
+    const card = makeCard('a')
+    const currentCard = getCurrentStudyCard(
+      createStudySession([card], 'front-to-back', () => 0.5),
+      [card],
+    )
+
+    expect(currentCard).toMatchObject({
+      promptText: card.frontText,
+      answerText: card.backText,
+    })
+  })
+
+  it('liefert bei Rückseite zu Vorderseite die Vorderseite als erwartete Antwort', () => {
+    const card = makeCard('a')
+    const currentCard = getCurrentStudyCard(
+      createStudySession([card], 'back-to-front', () => 0.5),
+      [card],
+    )
+
+    expect(currentCard).toMatchObject({
+      promptText: card.backText,
+      answerText: card.frontText,
+    })
+  })
+
+  it('löst gemischte Richtungen mit einer deterministischen Zufallsquelle auf', () => {
+    const cards = [makeCard('a'), makeCard('b')]
+    const randomValues = [0.1, 0.2, 0.25, 0.75]
+    const random = () => randomValues.shift() ?? 0.5
+    const session = createStudySession(cards, 'mixed', random, 'typed-answer')
+
+    expect(session.queue).toEqual([
+      { cardId: 'a', direction: 'front-to-back' },
+      { cardId: 'b', direction: 'back-to-front' },
+    ])
+  })
+
   it('reiht eine falsche Karte erst nach anderen Karten erneut ein', () => {
     const cards = ['a', 'b', 'c', 'd'].map((id) => makeCard(id))
     const initial = createStudySession(cards, 'front-to-back', () => 0.5)

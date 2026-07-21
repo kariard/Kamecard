@@ -104,6 +104,60 @@ export function ImportView({ decks, initialDeckId, onImport }: ImportViewProps) 
         }
       />
 
+      <section className="ai-import-guide surface" aria-labelledby="ai-import-guide-title">
+        <div className="ai-import-guide__intro">
+          <p className="eyebrow">Optionale Vorbereitung</p>
+          <h2 id="ai-import-guide-title">Mit einer KI in 5 Schritten</h2>
+          <p>
+            KameCard stellt keine Verbindung zu einer KI her. Du entscheidest selbst, ob und
+            welche Inhalte du außerhalb der App mit einem KI-Werkzeug teilst.
+          </p>
+        </div>
+
+        <ol className="ai-import-steps">
+          <li className="ai-import-step">
+            <strong>Material bei einer KI bereitstellen</strong>
+            <span>
+              Füge den vollständigen Quellinhalt bei einem KI-Werkzeug deiner Wahl ein
+              oder lade dort die vollständige Quelldatei hoch.
+            </span>
+          </li>
+          <li className="ai-import-step">
+            <strong>KameCard-Prompt senden</strong>
+            <span>
+              Kopiere oben den KI-Importprompt, passe darin bei Bedarf Vorder- und
+              Rückseite an und sende ihn an die KI.
+            </span>
+          </li>
+          <li className="ai-import-step">
+            <strong>TSV-Ergebnis übernehmen</strong>
+            <span>
+              Kopiere die reine TSV-Antwort oder speichere sie als .tsv- beziehungsweise
+              .txt-Datei. Manche Werkzeuge können direkt „kamecard-import.tsv“ erzeugen.
+            </span>
+          </li>
+          <li className="ai-import-step">
+            <strong>In KameCard einfügen</strong>
+            <span>
+              Füge den TSV-Inhalt unten in das Textfeld ein oder wähle die gespeicherte
+              .tsv- beziehungsweise .txt-Datei aus.
+            </span>
+          </li>
+          <li className="ai-import-step">
+            <strong>Vorschau prüfen und importieren</strong>
+            <span>
+              Kontrolliere gültige Karten, ungültige Zeilen und Dubletten und bestätige
+              erst danach den Import.
+            </span>
+          </li>
+        </ol>
+
+        <p className="ai-import-guide__note">
+          Teile keine vertraulichen Inhalte mit einem externen Werkzeug. Der normale
+          Text-/Dateiimport und die Vorschau funktionieren vollständig lokal.
+        </p>
+      </section>
+
       <form className="import-layout" onSubmit={handleImport}>
         <section className="import-panel surface" aria-labelledby="import-source-title">
           <h2 id="import-source-title">1. Quelle & Ziel</h2>
