@@ -8,6 +8,7 @@ import {
   type TypedAnswerAttempt,
 } from '../features/study'
 import type { Card, Deck, StudyDirection } from '../types/models'
+import { createStudyDirectionPreviews } from './studyDirectionPreview'
 
 interface StudySetupViewProps {
   deck: Deck
@@ -21,25 +22,21 @@ const directionOptions: Array<{
   value: StudyDirection
   title: string
   description: string
-  preview: string
 }> = [
   {
     value: 'front-to-back',
     title: 'Vorderseite → Rückseite',
     description: 'Lerne in der gewohnten Kartenrichtung.',
-    preview: 'あ → a',
   },
   {
     value: 'back-to-front',
     title: 'Rückseite → Vorderseite',
     description: 'Prüfe dein Wissen in umgekehrter Richtung.',
-    preview: 'a → あ',
   },
   {
     value: 'mixed',
     title: 'Gemischt',
     description: 'Die Richtung wird bei jeder Karte neu gewählt.',
-    preview: 'あ ⇄ a',
   },
 ]
 
@@ -67,6 +64,7 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
   const [direction, setDirection] = useState<StudyDirection>('front-to-back')
   const [answerMethod, setAnswerMethod] =
     useState<StudyAnswerMethod>('self-assessment')
+  const directionPreviews = createStudyDirectionPreviews(deck.cards)
 
   return (
     <main id="main-content" className="page-shell page-shell--narrow">
@@ -97,7 +95,12 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
                 onChange={() => setDirection(option.value)}
               />
               <span className="direction-option__check" aria-hidden="true" />
-              <span className="direction-option__preview">{option.preview}</span>
+              <span
+                className="direction-option__preview"
+                title={directionPreviews[option.value]}
+              >
+                {directionPreviews[option.value]}
+              </span>
               <strong>{option.title}</strong>
               <span>{option.description}</span>
             </label>

@@ -1209,6 +1209,7 @@ label.button:has(+ input:disabled) {
   position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
+  min-width: 0;
   padding: 1rem;
   border: 2px solid var(--line);
   border-radius: var(--radius-sm);
@@ -1249,10 +1250,16 @@ label.button:has(+ input:disabled) {
 }
 
 .direction-option__preview {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--moss-700);
   font-family: 'Yu Gothic', 'Hiragino Maru Gothic ProN', system-ui, sans-serif;
   font-size: 1.15rem;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .direction-option > span:last-child {
