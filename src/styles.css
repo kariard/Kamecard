@@ -302,6 +302,14 @@ label.button:has(+ input:disabled) {
   gap: 0.7rem;
 }
 
+.overview-actions {
+  margin: 1.5rem 0;
+}
+
+.overview-actions .button {
+  flex: 1 1 100%;
+}
+
 .eyebrow,
 .field-caption {
   margin-bottom: 0.45rem;
@@ -1190,6 +1198,10 @@ label.button:has(+ input:disabled) {
   margin-bottom: 1.25rem;
 }
 
+.study-start-button {
+  margin-bottom: 2rem;
+}
+
 .setup-panel .section-heading {
   margin-top: 0;
 }
@@ -1671,6 +1683,14 @@ label.button:has(+ input:disabled) {
   .inline-create__actions {
     flex: 0 0 auto;
     width: auto;
+  }
+
+  .overview-actions {
+    justify-content: flex-end;
+  }
+
+  .overview-actions .button {
+    flex: 0 1 auto;
   }
 
   .deck-summary {

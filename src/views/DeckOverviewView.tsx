@@ -13,6 +13,32 @@ interface DeckOverviewViewProps {
   onBackup: () => void
 }
 
+interface OverviewActionsProps {
+  onImport: () => void
+  onBackup: () => void
+  onCreate: () => void
+}
+
+export function OverviewActions({
+  onImport,
+  onBackup,
+  onCreate,
+}: OverviewActionsProps) {
+  return (
+    <div className="page-intro__actions overview-actions" role="group" aria-label="Deck-Aktionen">
+      <button className="button button--secondary" type="button" onClick={onImport}>
+        Importieren
+      </button>
+      <button className="button button--secondary" type="button" onClick={onBackup}>
+        Backup
+      </button>
+      <button className="button button--primary" type="button" onClick={onCreate}>
+        <span aria-hidden="true">＋</span> Neues Deck
+      </button>
+    </div>
+  )
+}
+
 export function DeckOverviewView({
   decks,
   getProgress,
@@ -44,23 +70,41 @@ export function DeckOverviewView({
         eyebrow="Willkommen zurück"
         title="Was möchtest du heute lernen?"
         description="Alle Decks und Lernstände bleiben sicher auf diesem Gerät."
-        actions={
-          <>
-            <button className="button button--secondary" type="button" onClick={onImport}>
-              Importieren
-            </button>
-            <button className="button button--secondary" type="button" onClick={onBackup}>
-              Backup
-            </button>
-            <button
-              className="button button--primary"
-              type="button"
-              onClick={() => setIsCreating(true)}
-            >
-              <span aria-hidden="true">＋</span> Neues Deck
-            </button>
-          </>
-        }
+      />
+
+      {decks.length ? (
+        <section aria-labelledby="deck-list-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Deine Sammlung</p>
+              <h2 id="deck-list-title">Decks</h2>
+            </div>
+            <span className="count-pill">{decks.length}</span>
+          </div>
+          <div className="deck-grid">
+            {decks.map((deck) => (
+              <DeckTile
+                key={deck.id}
+                deck={deck}
+                progress={getProgress(deck)}
+                onOpen={() => onOpenDeck(deck.id)}
+              />
+            ))}
+          </div>
+        </section>
+      ) : (
+        <EmptyState
+          title="Noch keine Decks"
+          description="Erstelle dein erstes Deck oder importiere vorhandene Karten als TSV-Text."
+          actionLabel="Erstes Deck erstellen"
+          onAction={() => setIsCreating(true)}
+        />
+      )}
+
+      <OverviewActions
+        onImport={onImport}
+        onBackup={onBackup}
+        onCreate={() => setIsCreating(true)}
       />
 
       {isCreating ? (
@@ -103,35 +147,6 @@ export function DeckOverviewView({
           </div>
         </form>
       ) : null}
-
-      {decks.length ? (
-        <section aria-labelledby="deck-list-title">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Deine Sammlung</p>
-              <h2 id="deck-list-title">Decks</h2>
-            </div>
-            <span className="count-pill">{decks.length}</span>
-          </div>
-          <div className="deck-grid">
-            {decks.map((deck) => (
-              <DeckTile
-                key={deck.id}
-                deck={deck}
-                progress={getProgress(deck)}
-                onOpen={() => onOpenDeck(deck.id)}
-              />
-            ))}
-          </div>
-        </section>
-      ) : (
-        <EmptyState
-          title="Noch keine Decks"
-          description="Erstelle dein erstes Deck oder importiere vorhandene Karten als TSV-Text."
-          actionLabel="Erstes Deck erstellen"
-          onAction={() => setIsCreating(true)}
-        />
-      )}
     </main>
   )
 }

@@ -109,8 +109,11 @@ Service-Worker-Pfade auf GitHub Pages auf den richtigen Ort.
 
 Vor einer Session stehen zwei Antwortmethoden zur Wahl:
 
-- **Selbst bewerten** ist die Standardmethode. Zuerst wird die Antwort
-  aufgedeckt, danach bewertet der Nutzer sie mit „Gewusst“ oder „Nicht gewusst“.
+- Bei der ersten Nutzung sind **Gemischt** und **Antwort eintippen** vorausgewählt.
+  Nach einem erfolgreichen Rundenstart merkt sich KameCard die zuletzt verwendete
+  Kombination lokal und deckübergreifend.
+- **Selbst bewerten** deckt zuerst die Antwort auf. Danach bewertet der Nutzer
+  sie mit „Gewusst“ oder „Nicht gewusst“.
 - **Antwort eintippen** funktioniert für Vorderseite → Rückseite,
   Rückseite → Vorderseite und gemischte Sessions. Enter oder „Antwort prüfen“
   wertet die Eingabe aus. Anschließend zeigt KameCard eindeutig richtig oder

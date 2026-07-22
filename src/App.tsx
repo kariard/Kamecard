@@ -6,7 +6,9 @@ import {
   type StudyAnswerMethod,
 } from './features/study'
 import { useKamecardData } from './hooks/useKamecardData'
+import { usePageScrollReset } from './hooks/usePageScrollReset'
 import { useStudyFlow } from './hooks/useStudyFlow'
+import { startStudyAndSavePreferences } from './storage'
 import type { ImportedCardDraft, StudyDirection } from './types/models'
 import { getDeckProgress } from './utils/statistics'
 import { BackupView } from './views/BackupView'
@@ -44,6 +46,7 @@ export default function App() {
   } = useKamecardData()
   const [route, setRoute] = useState<Route>({ name: 'overview' })
   const [appMessage, setAppMessage] = useState('')
+  usePageScrollReset(JSON.stringify(route))
 
   const routeDeckId = 'deckId' in route ? route.deckId : undefined
   const selectedDeck = data.decks.find((deck) => deck.id === routeDeckId)
@@ -65,17 +68,26 @@ export default function App() {
 
   function beginStudy(
     direction: StudyDirection,
-    answerMethod: StudyAnswerMethod = 'self-assessment',
+    answerMethod: StudyAnswerMethod = 'typed-answer',
     difficultOnly = false,
   ) {
-    if (!selectedDeck) return
-    const difficultIds = new Set(study.difficultCardIds)
-    const cards = difficultOnly
-      ? selectedDeck.cards.filter((card) => difficultIds.has(card.id))
-      : selectedDeck.cards
-    if (!cards.length) return
-    study.begin(direction, cards, answerMethod)
-    setRoute({ name: 'study-session', deckId: selectedDeck.id })
+    return startStudyAndSavePreferences(
+      () => {
+        if (!selectedDeck) return false
+        const difficultIds = new Set(study.difficultCardIds)
+        const cards = difficultOnly
+          ? selectedDeck.cards.filter((card) => difficultIds.has(card.id))
+          : selectedDeck.cards
+        if (!cards.length) return false
+        study.begin(direction, cards, answerMethod)
+        setRoute({ name: 'study-session', deckId: selectedDeck.id })
+        return true
+      },
+      {
+        direction,
+        answerMethod,
+      },
+    )
   }
 
   function renderRoute() {

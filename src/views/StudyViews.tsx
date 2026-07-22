@@ -7,8 +7,11 @@ import {
   type StudyAnswerMethod,
   type TypedAnswerAttempt,
 } from '../features/study'
+import { loadStudyPreferences } from '../storage'
 import type { Card, Deck, StudyDirection } from '../types/models'
 import { createStudyDirectionPreviews } from './studyDirectionPreview'
+import { startStudyWithSelectedOptions } from './studySetupSelection'
+import { focusTypedAnswerInput } from './typedAnswerFocus'
 
 interface StudySetupViewProps {
   deck: Deck
@@ -62,9 +65,10 @@ const answerMethodOptions: Array<{
 ]
 
 export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
-  const [direction, setDirection] = useState<StudyDirection>('front-to-back')
-  const [answerMethod, setAnswerMethod] =
-    useState<StudyAnswerMethod>('self-assessment')
+  const [preferences, setPreferences] = useState(() =>
+    loadStudyPreferences(),
+  )
+  const { direction, answerMethod } = preferences
   const directionPreviews = createStudyDirectionPreviews(deck.cards)
 
   return (
@@ -76,6 +80,17 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
       />
 
       <section className="setup-panel surface" aria-label="Einstellungen der Lernrunde">
+        <button
+          className="button button--primary button--wide study-start-button"
+          type="button"
+          disabled={deck.cards.length === 0}
+          onClick={() =>
+            startStudyWithSelectedOptions(onStart, direction, answerMethod)
+          }
+        >
+          Lernrunde starten
+        </button>
+
         <div className="section-heading">
           <div>
             <p className="eyebrow">Schritt 1</p>
@@ -93,7 +108,12 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
                 name="study-direction"
                 value={option.value}
                 checked={direction === option.value}
-                onChange={() => setDirection(option.value)}
+                onChange={() =>
+                  setPreferences((current) => ({
+                    ...current,
+                    direction: option.value,
+                  }))
+                }
               />
               <span className="direction-option__check" aria-hidden="true" />
               <span
@@ -129,7 +149,12 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
                 name="study-answer-method"
                 value={option.value}
                 checked={answerMethod === option.value}
-                onChange={() => setAnswerMethod(option.value)}
+                onChange={() =>
+                  setPreferences((current) => ({
+                    ...current,
+                    answerMethod: option.value,
+                  }))
+                }
               />
               <span className="direction-option__check" aria-hidden="true" />
               <span className="direction-option__preview" aria-hidden="true">
@@ -141,13 +166,6 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
           ))}
         </div>
 
-        <button
-          className="button button--primary button--wide"
-          type="button"
-          onClick={() => onStart(direction, answerMethod)}
-        >
-          Lernrunde starten
-        </button>
       </section>
 
       <aside className="notice-box" aria-label="Hinweis zur Lernrunde">
@@ -207,6 +225,7 @@ export function StudySessionView({
   const [typedFeedback, setTypedFeedback] =
     useState<TypedAnswerFeedback | null>(null)
   const typedAnswerInputRef = useRef<HTMLInputElement>(null)
+  const hasFocusedTypedAnswerRef = useRef(false)
   const typedAttemptRef = useRef<TypedAnswerAttempt<boolean>>(
     createTypedAnswerAttempt(),
   )
@@ -216,11 +235,11 @@ export function StudySessionView({
   useEffect(() => {
     if (usesTypedAnswer && typedFeedback === null) {
       const frameId = window.requestAnimationFrame(() => {
-        typedAnswerInputRef.current?.focus()
-        typedAnswerInputRef.current?.scrollIntoView({
-          block: 'center',
-          inline: 'nearest',
-        })
+        const input = typedAnswerInputRef.current
+        if (!input) return
+
+        focusTypedAnswerInput(input, !hasFocusedTypedAnswerRef.current)
+        hasFocusedTypedAnswerRef.current = true
       })
 
       return () => window.cancelAnimationFrame(frameId)
