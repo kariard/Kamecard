@@ -21,8 +21,9 @@ erfolgreichen Laden auch offline verwendet werden. Das Repository heißt
   bewerten
 - Eingetippte Antworten nachvollziehbar normalisieren, prüfen und mit der
   richtigen Lösung vergleichen
-- Falsch beantwortete Karten nach einigen anderen Karten erneut einreihen
-- Schwächere Karten in späteren Sessions tendenziell früher zeigen
+- Jede Karte zuerst einmal zeigen und anschließend adaptiv festigen
+- Fehlerhafte und historisch schwächere Karten regelbasiert häufiger auswählen,
+  ohne den Mindestabstand zwischen Wiederholungen aus dem Blick zu verlieren
 - Lernfortschritt, Trefferzähler, Streak und Mastery-Level lokal speichern
 - TXT- und TSV-Inhalte einfügen oder als UTF-8-Datei hochladen
 - Ungültige Zeilen und Dubletten vor dem Import in einer Vorschau erkennen
@@ -128,6 +129,20 @@ Für den Textvergleich normalisiert KameCard beide Antworten vorher:
 Die Prüfung erfindet bewusst keine Synonyme, Schreibvarianten oder Romaji. Eine
 Alternative gilt nur dann als richtig, wenn sie nach diesen klaren Regeln mit
 der gespeicherten Antwort übereinstimmt.
+
+Jede Lernrunde beginnt mit einem garantierten ersten Durchgang, in dem jede
+Karte genau einmal erscheint. Danach bleiben nur Karten aktiv, deren Rundenziel
+noch nicht erreicht ist. Historisch starke Karten können nach einem direkten
+Erfolg abgeschlossen sein; neue, unsichere oder in der Runde falsch
+beantwortete Karten benötigen zwei richtige Versuche ohne dazwischenliegenden
+Fehler. Fehler setzen diese korrekte Serie zurück.
+
+Die adaptive Auswahl berücksichtigt Fehler der aktuellen Runde, die bisherige
+Mastery und die historische Erfolgsquote. Im Normalfall liegen mindestens vier
+andere Versuche zwischen Wiederholungen derselben Karte. Kleine Decks verwenden
+einen sicheren Fallback, damit die Runde weder blockiert noch eine Karte direkt
+wiederholt wird, solange eine Alternative aktiv ist. Bei gemischten Sessions
+behält jede Karte ihre zu Beginn festgelegte Richtung bei allen Wiederholungen.
 
 ## Karten importieren
 

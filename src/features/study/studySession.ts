@@ -9,20 +9,44 @@ export type ResolvedStudyDirection = Exclude<StudyDirection, 'mixed'>
 
 export type StudyAnswerMethod = 'self-assessment' | 'typed-answer'
 
+export type StudyRoundPhase = 'first-pass' | 'adaptive'
+
+export type StudyCardClassification =
+  | 'new'
+  | 'uncertain'
+  | 'historically-strong'
+
 export interface StudyQueueItem {
   cardId: string
   direction: ResolvedStudyDirection
 }
 
+export interface StudyCardSessionState {
+  cardId: string
+  direction: ResolvedStudyDirection
+  classification: StudyCardClassification
+  hasBeenSeen: boolean
+  incorrectAnswers: number
+  correctSinceLastIncorrect: number
+  requiredCorrectAnswers: number
+  completed: boolean
+  lastAttemptIndex: number | null
+  startingMasteryLevel: MasteryLevel
+  historicalSuccessRate: number
+}
+
 export interface StudySession {
   direction: StudyDirection
   answerMethod: StudyAnswerMethod
-  queue: StudyQueueItem[]
+  phase: StudyRoundPhase
+  currentItem?: StudyQueueItem
+  remainingFirstPass: StudyQueueItem[]
+  cardStates: Record<string, StudyCardSessionState>
   totalCards: number
+  attemptCount: number
   completedCardIds: string[]
   correctAnswers: number
   incorrectAnswers: number
-  incorrectByCardId: Record<string, number>
 }
 
 export interface CurrentStudyCard {
@@ -44,7 +68,19 @@ export interface StudyProgress {
   percent: number
 }
 
-const WRONG_ANSWER_RETRY_DELAY = 2
+export const HISTORICALLY_STRONG_MIN_MASTERY_LEVEL = 3
+export const HISTORICALLY_STRONG_MIN_STREAK = 2
+export const HISTORICALLY_STRONG_MIN_ATTEMPTS = 3
+export const HISTORICALLY_STRONG_MIN_SUCCESS_RATE = 0.75
+export const MIN_OTHER_ATTEMPTS_BETWEEN_REPEATS = 4
+
+const STRONG_CARD_REQUIRED_CORRECT_ANSWERS = 1
+const DEFAULT_REQUIRED_CORRECT_ANSWERS = 2
+const BASE_ADAPTIVE_WEIGHT = 1
+const ERROR_WEIGHT_PER_MISTAKE = 3
+const MAX_WEIGHTED_MISTAKES = 3
+const MASTERY_DEFICIT_WEIGHT = 0.5
+const HISTORICAL_FAILURE_WEIGHT = 2
 
 function safeRandom(random: () => number): number {
   try {
@@ -60,16 +96,92 @@ function safeRandom(random: () => number): number {
   }
 }
 
-function cardStrength(card: Card): number {
-  const answerCount = card.correctCount + card.incorrectCount
-  const successRate = answerCount === 0 ? 0 : card.correctCount / answerCount
+function historicalAttemptCount(card: Card): number {
+  return card.correctCount + card.incorrectCount
+}
 
-  return (
-    card.masteryLevel * 100 +
-    card.currentStreak * 2 +
-    successRate * 5 -
-    Math.min(card.incorrectCount, 20)
-  )
+function historicalSuccessRate(card: Card): number {
+  const attemptCount = historicalAttemptCount(card)
+  return attemptCount === 0 ? 0 : card.correctCount / attemptCount
+}
+
+export function classifyStudyCard(card: Card): StudyCardClassification {
+  const attemptCount = historicalAttemptCount(card)
+
+  if (attemptCount === 0) {
+    return 'new'
+  }
+
+  if (
+    card.masteryLevel >= HISTORICALLY_STRONG_MIN_MASTERY_LEVEL &&
+    card.currentStreak >= HISTORICALLY_STRONG_MIN_STREAK &&
+    attemptCount >= HISTORICALLY_STRONG_MIN_ATTEMPTS &&
+    historicalSuccessRate(card) >= HISTORICALLY_STRONG_MIN_SUCCESS_RATE
+  ) {
+    return 'historically-strong'
+  }
+
+  return 'uncertain'
+}
+
+function shuffleItems<T>(
+  items: readonly T[],
+  random: () => number,
+): T[] {
+  const shuffled = [...items]
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(safeRandom(random) * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[swapIndex]
+    shuffled[swapIndex] = current
+  }
+
+  return shuffled
+}
+
+function interleaveFirstPassGroups(
+  otherCards: readonly Card[],
+  strongCards: readonly Card[],
+): Card[] {
+  if (otherCards.length === 0) return [...strongCards]
+  if (strongCards.length === 0) return [...otherCards]
+
+  const result: Card[] = []
+  let otherIndex = 0
+  let strongIndex = 0
+
+  while (
+    otherIndex < otherCards.length ||
+    strongIndex < strongCards.length
+  ) {
+    if (otherIndex >= otherCards.length) {
+      result.push(strongCards[strongIndex])
+      strongIndex += 1
+      continue
+    }
+
+    if (strongIndex >= strongCards.length) {
+      result.push(otherCards[otherIndex])
+      otherIndex += 1
+      continue
+    }
+
+    const nextOtherPosition =
+      (otherIndex + 0.5) / otherCards.length
+    const nextStrongPosition =
+      (strongIndex + 0.5) / strongCards.length
+
+    if (nextOtherPosition <= nextStrongPosition) {
+      result.push(otherCards[otherIndex])
+      otherIndex += 1
+    } else {
+      result.push(strongCards[strongIndex])
+      strongIndex += 1
+    }
+  }
+
+  return result
 }
 
 export function orderCardsForStudy(
@@ -79,15 +191,17 @@ export function orderCardsForStudy(
   const uniqueCards = Array.from(
     new Map(cards.map((card) => [card.id, card])).values(),
   )
+  const strongCards = uniqueCards.filter(
+    (card) => classifyStudyCard(card) === 'historically-strong',
+  )
+  const otherCards = uniqueCards.filter(
+    (card) => classifyStudyCard(card) !== 'historically-strong',
+  )
 
-  return uniqueCards
-    .map((card) => ({ card, tieBreaker: safeRandom(random) }))
-    .sort(
-      (left, right) =>
-        cardStrength(left.card) - cardStrength(right.card) ||
-        left.tieBreaker - right.tieBreaker,
-    )
-    .map(({ card }) => card)
+  return interleaveFirstPassGroups(
+    shuffleItems(otherCards, random),
+    shuffleItems(strongCards, random),
+  )
 }
 
 function resolveDirection(
@@ -101,26 +215,83 @@ function resolveDirection(
   return safeRandom(random) < 0.5 ? 'front-to-back' : 'back-to-front'
 }
 
+function requiredCorrectAnswers(
+  classification: StudyCardClassification,
+): number {
+  return classification === 'historically-strong'
+    ? STRONG_CARD_REQUIRED_CORRECT_ANSWERS
+    : DEFAULT_REQUIRED_CORRECT_ANSWERS
+}
+
+function toQueueItem(state: StudyCardSessionState): StudyQueueItem {
+  return {
+    cardId: state.cardId,
+    direction: state.direction,
+  }
+}
+
+function markItemAsSeen(
+  states: Record<string, StudyCardSessionState>,
+  item: StudyQueueItem | undefined,
+): Record<string, StudyCardSessionState> {
+  if (!item) return states
+
+  const state = states[item.cardId]
+  if (!state || state.hasBeenSeen) return states
+
+  return {
+    ...states,
+    [item.cardId]: {
+      ...state,
+      hasBeenSeen: true,
+    },
+  }
+}
+
 export function createStudySession(
   cards: readonly Card[],
   direction: StudyDirection,
   random: () => number = Math.random,
   answerMethod: StudyAnswerMethod = 'self-assessment',
 ): StudySession {
-  const queue = orderCardsForStudy(cards, random).map((card) => ({
-    cardId: card.id,
-    direction: resolveDirection(direction, random),
-  }))
+  const orderedCards = orderCardsForStudy(cards, random)
+  const cardStates = Object.fromEntries(
+    orderedCards.map((card) => {
+      const classification = classifyStudyCard(card)
+      const state: StudyCardSessionState = {
+        cardId: card.id,
+        direction: resolveDirection(direction, random),
+        classification,
+        hasBeenSeen: false,
+        incorrectAnswers: 0,
+        correctSinceLastIncorrect: 0,
+        requiredCorrectAnswers: requiredCorrectAnswers(classification),
+        completed: false,
+        lastAttemptIndex: null,
+        startingMasteryLevel: card.masteryLevel,
+        historicalSuccessRate: historicalSuccessRate(card),
+      }
+
+      return [card.id, state]
+    }),
+  )
+  const firstPass = orderedCards.map((card) =>
+    toQueueItem(cardStates[card.id]),
+  )
+  const currentItem = firstPass[0]
 
   return {
     direction,
     answerMethod,
-    queue,
-    totalCards: queue.length,
+    phase: firstPass.length === 0 ? 'adaptive' : 'first-pass',
+    currentItem,
+    remainingFirstPass: firstPass.slice(1),
+    cardStates: markItemAsSeen(cardStates, currentItem),
+    totalCards: firstPass.length,
+    attemptCount: 0,
     completedCardIds: [],
     correctAnswers: 0,
     incorrectAnswers: 0,
-    incorrectByCardId: {},
   }
 }
 
@@ -128,7 +299,7 @@ export function getCurrentStudyCard(
   session: StudySession,
   cards: readonly Card[],
 ): CurrentStudyCard | undefined {
-  const queueItem = session.queue[0]
+  const queueItem = session.currentItem
 
   if (queueItem === undefined) {
     return undefined
@@ -171,18 +342,99 @@ export function updateCardMastery(
   }
 }
 
-function incrementMistakeCount(
-  counts: Record<string, number>,
-  cardId: string,
-): Record<string, number> {
-  const currentCount = Object.prototype.hasOwnProperty.call(counts, cardId)
-    ? counts[cardId]
-    : 0
+export function getAdaptiveStudyWeight(
+  state: StudyCardSessionState,
+): number {
+  const mistakeBonus =
+    Math.min(state.incorrectAnswers, MAX_WEIGHTED_MISTAKES) *
+    ERROR_WEIGHT_PER_MISTAKE
+  const masteryBonus =
+    (5 - state.startingMasteryLevel) * MASTERY_DEFICIT_WEIGHT
+  const successRateBonus =
+    state.classification === 'new'
+      ? 0
+      : (1 - state.historicalSuccessRate) * HISTORICAL_FAILURE_WEIGHT
 
-  return {
-    ...counts,
-    [cardId]: (currentCount ?? 0) + 1,
+  return BASE_ADAPTIVE_WEIGHT + mistakeBonus + masteryBonus + successRateBonus
+}
+
+function otherAttemptsSinceLastAttempt(
+  state: StudyCardSessionState,
+  attemptCount: number,
+): number {
+  if (state.lastAttemptIndex === null) {
+    return Number.POSITIVE_INFINITY
   }
+
+  return Math.max(0, attemptCount - state.lastAttemptIndex - 1)
+}
+
+function chooseWeightedState(
+  states: readonly StudyCardSessionState[],
+  random: () => number,
+): StudyCardSessionState | undefined {
+  if (states.length === 0) return undefined
+
+  const totalWeight = states.reduce(
+    (sum, state) => sum + getAdaptiveStudyWeight(state),
+    0,
+  )
+  const target = safeRandom(random) * totalWeight
+  let accumulatedWeight = 0
+
+  for (const state of states) {
+    accumulatedWeight += getAdaptiveStudyWeight(state)
+    if (target < accumulatedWeight) {
+      return state
+    }
+  }
+
+  return states[states.length - 1]
+}
+
+export function selectNextAdaptiveStudyItem(
+  session: StudySession,
+  random: () => number = Math.random,
+): StudyQueueItem | undefined {
+  const activeStates = Object.values(session.cardStates).filter(
+    (state) => !state.completed,
+  )
+
+  if (activeStates.length === 0) return undefined
+
+  const unseenState = activeStates.find((state) => !state.hasBeenSeen)
+  if (unseenState) return toQueueItem(unseenState)
+
+  const eligibleStates = activeStates.filter(
+    (state) =>
+      otherAttemptsSinceLastAttempt(state, session.attemptCount) >=
+      MIN_OTHER_ATTEMPTS_BETWEEN_REPEATS,
+  )
+  const weightedChoice = chooseWeightedState(eligibleStates, random)
+
+  if (weightedChoice) return toQueueItem(weightedChoice)
+  if (activeStates.length === 1) return toQueueItem(activeStates[0])
+
+  const alternatives = activeStates.filter(
+    (state) => state.cardId !== session.currentItem?.cardId,
+  )
+  const fallbackPool = alternatives.length > 0 ? alternatives : activeStates
+  const leastRecentlyAttempted = [...fallbackPool].sort(
+    (left, right) =>
+      (left.lastAttemptIndex ?? -1) - (right.lastAttemptIndex ?? -1),
+  )[0]
+
+  return leastRecentlyAttempted
+    ? toQueueItem(leastRecentlyAttempted)
+    : undefined
+}
+
+function completedCardIds(
+  states: Record<string, StudyCardSessionState>,
+): string[] {
+  return Object.values(states)
+    .filter((state) => state.completed)
+    .map((state) => state.cardId)
 }
 
 export function rateCurrentCard(
@@ -190,42 +442,74 @@ export function rateCurrentCard(
   card: Card,
   knewAnswer: boolean,
   reviewedAt: string = nowIsoString(),
+  random: () => number = Math.random,
 ): StudyAnswerResult {
-  const currentItem = session.queue[0]
+  const currentItem = session.currentItem
+  const currentState = session.cardStates[card.id]
 
-  if (currentItem === undefined || currentItem.cardId !== card.id) {
+  if (
+    currentItem === undefined ||
+    currentItem.cardId !== card.id ||
+    currentState === undefined
+  ) {
     return { session, updatedCard: card }
   }
 
   const updatedCard = updateCardMastery(card, knewAnswer, reviewedAt)
-  let remainingQueue = session.queue
-    .slice(1)
-    .filter((item) => item.cardId !== card.id)
-
-  if (!knewAnswer) {
-    const retryIndex = Math.min(WRONG_ANSWER_RETRY_DELAY, remainingQueue.length)
-    remainingQueue = [
-      ...remainingQueue.slice(0, retryIndex),
-      currentItem,
-      ...remainingQueue.slice(retryIndex),
-    ]
+  const nextRequiredCorrectAnswers = knewAnswer
+    ? currentState.requiredCorrectAnswers
+    : DEFAULT_REQUIRED_CORRECT_ANSWERS
+  const nextCorrectSeries = knewAnswer
+    ? currentState.correctSinceLastIncorrect + 1
+    : 0
+  const updatedState: StudyCardSessionState = {
+    ...currentState,
+    hasBeenSeen: true,
+    incorrectAnswers:
+      currentState.incorrectAnswers + (knewAnswer ? 0 : 1),
+    correctSinceLastIncorrect: nextCorrectSeries,
+    requiredCorrectAnswers: nextRequiredCorrectAnswers,
+    completed:
+      knewAnswer && nextCorrectSeries >= nextRequiredCorrectAnswers,
+    lastAttemptIndex: session.attemptCount,
   }
-
-  const completedCardIds = knewAnswer
-    ? Array.from(new Set([...session.completedCardIds, card.id]))
-    : session.completedCardIds
+  const cardStates = {
+    ...session.cardStates,
+    [card.id]: updatedState,
+  }
+  const attemptCount = session.attemptCount + 1
+  const hasRemainingFirstPass =
+    session.phase === 'first-pass' &&
+    session.remainingFirstPass.length > 0
+  const nextFirstPassItem = hasRemainingFirstPass
+    ? session.remainingFirstPass[0]
+    : undefined
+  const cardStatesAfterScheduling = markItemAsSeen(
+    cardStates,
+    nextFirstPassItem,
+  )
+  const sessionAfterAttempt: StudySession = {
+    ...session,
+    phase: hasRemainingFirstPass ? 'first-pass' : 'adaptive',
+    currentItem: nextFirstPassItem ?? currentItem,
+    remainingFirstPass: hasRemainingFirstPass
+      ? session.remainingFirstPass.slice(1)
+      : [],
+    cardStates: cardStatesAfterScheduling,
+    attemptCount,
+    completedCardIds: completedCardIds(cardStatesAfterScheduling),
+    correctAnswers: session.correctAnswers + (knewAnswer ? 1 : 0),
+    incorrectAnswers: session.incorrectAnswers + (knewAnswer ? 0 : 1),
+  }
+  const nextItem = hasRemainingFirstPass
+    ? sessionAfterAttempt.currentItem
+    : selectNextAdaptiveStudyItem(sessionAfterAttempt, random)
 
   return {
     updatedCard,
     session: {
-      ...session,
-      queue: remainingQueue,
-      completedCardIds,
-      correctAnswers: session.correctAnswers + (knewAnswer ? 1 : 0),
-      incorrectAnswers: session.incorrectAnswers + (knewAnswer ? 0 : 1),
-      incorrectByCardId: knewAnswer
-        ? session.incorrectByCardId
-        : incrementMistakeCount(session.incorrectByCardId, card.id),
+      ...sessionAfterAttempt,
+      currentItem: nextItem,
     },
   }
 }
@@ -248,19 +532,19 @@ export function getStudyProgress(session: StudySession): StudyProgress {
 }
 
 export function getDifficultCardIds(session: StudySession): string[] {
-  return Object.entries(session.incorrectByCardId)
-    .filter(([, count]) => count > 0)
-    .sort(([leftId, leftCount], [rightId, rightCount]) =>
-      rightCount === leftCount
-        ? leftId.localeCompare(rightId)
-        : rightCount - leftCount,
+  return Object.values(session.cardStates)
+    .filter((state) => state.incorrectAnswers > 0)
+    .sort((left, right) =>
+      right.incorrectAnswers === left.incorrectAnswers
+        ? left.cardId.localeCompare(right.cardId)
+        : right.incorrectAnswers - left.incorrectAnswers,
     )
-    .map(([cardId]) => cardId)
+    .map((state) => state.cardId)
 }
 
 export function isStudySessionComplete(session: StudySession): boolean {
   return (
-    session.queue.length === 0 &&
+    session.currentItem === undefined &&
     session.completedCardIds.length >= session.totalCards
   )
 }

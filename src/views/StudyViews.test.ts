@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { Card, Deck } from '../types/models'
-import { StudySetupView } from './StudyViews'
+import { StudySessionView, StudySetupView } from './StudyViews'
 
 const timestamp = '2026-01-01T00:00:00.000Z'
 
@@ -54,5 +54,32 @@ describe('StudySetupView direction previews', () => {
     expect(markup).toContain('Vorderseite → Rückseite')
     expect(markup).toContain('Rückseite → Vorderseite')
     expect(markup).toContain('Vorderseite ⇄ Rückseite')
+  })
+})
+
+describe('StudySessionView adaptive progress', () => {
+  it('unterscheidet gefestigte Karten von Antwortversuchen', () => {
+    const markup = renderToStaticMarkup(
+      createElement(StudySessionView, {
+        deckName: 'Testdeck',
+        answerMethod: 'self-assessment',
+        prompt: 'Haus',
+        answer: 'maison',
+        isFlipped: true,
+        progress: 50,
+        completedCards: 1,
+        totalCards: 2,
+        correctCount: 3,
+        incorrectCount: 1,
+        onReveal: () => undefined,
+        onRate: () => false,
+        onContinueAfterTypedAnswer: () => undefined,
+        onQuit: () => undefined,
+      }),
+    )
+
+    expect(markup).toContain('1 von 2 Karten gefestigt')
+    expect(markup).toContain('3 gewusst')
+    expect(markup).toContain('1 nicht gewusst')
   })
 })

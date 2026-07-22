@@ -1,6 +1,133 @@
 # KameCard – geplante Produkt- und Lernkonzepte
 
-Diese Datei sammelt Produktideen und Lernkonzepte, die noch nicht umgesetzt sind. Sie beschreibt gewünschtes Verhalten, fachliche Leitlinien, offene Entscheidungen und erforderliche Tests. Sie ist keine Implementierungsspezifikation für bereits vorhandene Funktionen.
+Diese Datei sammelt zentrale und geplante Produkt- und Lernkonzepte. Sie beschreibt den fachlichen Stand, gewünschtes Verhalten, Leitlinien, offene Entscheidungen und erforderliche Tests. Der Status eines Abschnitts kennzeichnet, ob ein Konzept bereits umgesetzt oder noch geplant ist.
+
+## Adaptive Lernrunden
+
+**Status:** Für **„Selbst bewerten“** und **„Antwort eintippen“** implementiert. Für Multiple Choice vorgesehen, sobald dieser Modus umgesetzt wird.
+
+### Ziel und Geltungsbereich
+
+Adaptive Lernrunden bilden die zentrale, gemeinsame Rundensystematik für alle Antwortmethoden. Sie sorgen innerhalb einer gestarteten Session dafür, dass jede Karte zunächst fair abgefragt und anschließend abhängig von ihrem Lernstand und den Fehlern der aktuellen Runde gefestigt wird.
+
+Das System ist transparent und regelbasiert. Es verwendet weder KI noch Machine Learning. Es steuert ausschließlich den Ablauf einer laufenden Lernrunde und ist kein zeitbasiertes Spaced-Repetition-System für mehrere Tage. Tagespläne, Fälligkeitsdaten, automatische Tagesdecks und eine Aufteilung großer Decks in Lernpakete sind nicht Bestandteil dieses Konzepts.
+
+### Phase 1: Garantierter erster Durchgang
+
+- Jede Karte des ausgewählten Decks wird genau einmal gezeigt, bevor eine Karte wiederholt werden darf.
+- Noch nicht erstmals gezeigte Karten haben immer Vorrang vor Wiederholungen.
+- Jede Karte erhält dadurch unabhängig von ihrer Historie einen fairen ersten Versuch.
+- Historisch starke Karten und die übrigen Karten werden zunächst getrennt mit einer kontrollierbaren Zufallsquelle gemischt.
+- Anschließend werden die Gruppen ungefähr im Verhältnis von zwei übrigen Karten zu einer historisch starken Karte zusammengeführt. Restbestände werden sinnvoll eingefügt.
+- Falls nur eine der beiden Gruppen vorhanden ist, wird diese normal gemischt.
+- Die Zufallsquelle bleibt kontrollierbar und injizierbar, damit Reihenfolge und Richtungswahl reproduzierbar getestet werden können.
+
+Die Mischung verhindert, dass bekannte Karten gesammelt am Anfang oder Ende erscheinen. Bewertungen während des ersten Durchgangs dürfen niemals dazu führen, dass eine Karte wiederholt wird, solange noch ungesehene Karten vorhanden sind.
+
+### Phase 2: Adaptive Festigung
+
+Nach dem ersten Durchgang bleiben nur Karten aktiv, die ihr individuelles Abschlusskriterium noch nicht erfüllt haben. Die nächste Karte wird über eine nachvollziehbare gewichtete Auswahl bestimmt:
+
+- Fehler in der aktuellen Runde erhöhen die Priorität.
+- Eine schwächere bisherige Mastery erhöht die Priorität.
+- Eine schwächere historische Erfolgsquote erhöht die Priorität.
+- Jede aktive und regulär auswählbare Karte behält ein positives Gewicht und damit eine reale Auswahlchance.
+
+Bei neuen Karten ohne historische Antworten existiert noch keine belastbare Erfolgsquote. Für sie wird deshalb kein künstlicher Fehlquoten-Bonus berechnet; ihre niedrige Ausgangs-Mastery und ihr Zwei-Erfolge-Ziel priorisieren sie bereits nachvollziehbar.
+
+Die implementierte Startgewichtung ist bewusst einfach und zentral definiert:
+
+- Basisgewicht: `1`
+- Fehlerbonus: `3` pro Fehler der aktuellen Runde, begrenzt auf die ersten drei Fehler
+- Mastery-Bonus: `(5 - masteryLevel beim Sessionstart) × 0,5`
+- historischer Fehlquoten-Bonus: `(1 - historische Erfolgsquote) × 2`, sofern historische Antworten vorhanden sind
+
+Alle aktiven Karten behalten dadurch ein positives Grundgewicht. Der begrenzte Fehlerbonus priorisiert Problemkarten deutlich, ohne andere Karten mit wachsender Fehlerzahl praktisch vollständig zu verdrängen. Diese Werte sind eine erste Produktheuristik und können nach späteren Nutzungserfahrungen zentral angepasst werden.
+
+Schwierige Karten erscheinen dadurch häufiger, ohne dass die Runde dauerhaft nur die schwierigste Karte auswählt. Gewichte und Schwellenwerte sollen als benannte Konstanten oder klar benannte Hilfsfunktionen zentral definiert sein.
+
+### Historische Einstufung
+
+Für die Einstufung werden ausschließlich die bereits vorhandenen Kartenwerte `masteryLevel`, `currentStreak`, `correctCount` und `incorrectCount` verwendet.
+
+Eine Karte gilt als **historisch stark**, wenn alle folgenden Bedingungen erfüllt sind:
+
+- `masteryLevel >= 3`
+- `currentStreak >= 2`
+- mindestens drei historische Antworten vorhanden
+- historische Erfolgsquote mindestens 75 Prozent
+
+Eine Karte gilt als **neu**, wenn `correctCount + incorrectCount === 0` gilt. Jede Karte, die weder neu noch historisch stark ist, gilt als **unsicher**.
+
+Diese Einstufung ist eine transparente erste Produktheuristik. Ihre Schwellenwerte können später anhand von Nutzungserfahrungen angepasst werden, ohne den grundsätzlichen Aufbau der Lernrunde zu ändern.
+
+### Individuelle Abschlusskriterien
+
+Für jede Karte gilt abhängig von ihrer Einstufung und den Antworten der aktuellen Runde ein eigenes Abschlussziel:
+
+- Eine historisch starke Karte ist nach einem richtigen ersten Versuch für die Runde abgeschlossen.
+- Eine neue oder unsichere Karte benötigt zwei getrennte richtige Antworten ohne zwischenzeitlichen Fehler.
+- Nach jedem Fehler wird die korrekte Serie der betroffenen Karte auf null zurückgesetzt.
+- Eine Karte mit mindestens einem Fehler in der aktuellen Runde benötigt nach ihrem letzten Fehler zwei getrennte richtige Antworten.
+- Ein neuer Fehler zwischen diesen Erfolgen setzt die Serie erneut auf null.
+
+Beispiele:
+
+- Historisch stark: `richtig` → abgeschlossen
+- Neu oder unsicher: `richtig` → später nochmals `richtig` → abgeschlossen
+- Fehlerkarte: `falsch` → später `richtig` → später nochmals `richtig` → abgeschlossen
+- Erneuter Fehler: `falsch` → `richtig` → erneut `falsch` → `richtig` → nochmals `richtig` → abgeschlossen
+
+„Getrennt“ bedeutet, dass die Antworten in unterschiedlichen Versuchen erfolgen. Der Scheduler versucht, zwischen diesen Versuchen den nachfolgend beschriebenen Mindestabstand einzuhalten.
+
+### Abstand zwischen Wiederholungen
+
+Im Normalfall sollen zwischen zwei Versuchen derselben Karte mindestens vier andere Kartenversuche liegen. Die zentrale Richtgröße lautet:
+
+`MIN_OTHER_ATTEMPTS_BETWEEN_REPEATS = 4`
+
+Der Scheduler bevorzugt Karten, deren Mindestabstand bereits erreicht ist. Für kleine Decks und gegen Blockaden gelten folgende Fallbacks:
+
+- Noch nicht erstmals gezeigte Karten haben immer Vorrang.
+- Falls keine aktive Karte den regulären Mindestabstand erfüllt, wird die am längsten nicht gezeigte aktive Karte gewählt.
+- Dieselbe Karte wird niemals direkt wiederholt, solange mindestens eine andere aktive Karte verfügbar ist.
+- Falls nur noch eine aktive Karte vorhanden ist, darf sie mangels Alternative erneut gezeigt werden.
+- Die Runde darf wegen des Mindestabstands weder blockieren noch in eine Endlosschleife geraten.
+
+### Lernrichtung innerhalb einer Session
+
+Die festen Richtungen **Vorderseite → Rückseite** und **Rückseite → Vorderseite** bleiben unverändert. Bei **Gemischt** wird jeder Karte beim Erstellen der Session einmal eine konkrete Richtung zugewiesen.
+
+Alle Wiederholungen derselben Karte behalten diese Richtung während der gesamten Session. Ein Fehler muss dadurch mit späteren richtigen Antworten derselben Richtung gefestigt werden und kann nicht durch eine Antwort in der Gegenrichtung ausgeglichen werden.
+
+### Transienter Session-Zustand
+
+Der nicht persistierte Session-Zustand hält pro Karte mindestens fest:
+
+- ob sie bereits erstmals gezeigt wurde,
+- die Anzahl ihrer Fehler in der aktuellen Runde,
+- die Anzahl korrekter Antworten seit dem letzten Fehler,
+- die benötigte Anzahl korrekter Antworten,
+- ob sie vollständig abgeschlossen ist,
+- den Index beziehungsweise Zeitpunkt ihres letzten Versuchs,
+- ihre für diese Session festgelegte Richtung.
+
+Dieser Zustand ist die gemeinsame Quelle der Wahrheit dafür, welche Karte als Nächstes erscheint, wann eine Karte abgeschlossen ist, wann die Session endet und ob der Mindestabstand erfüllt ist.
+
+### Statistik, Fortschritt und Persistenz
+
+Jeder echte Antwortversuch aktualisiert weiterhin die vorhandenen Kartenstatistiken `correctCount`, `incorrectCount`, `currentStreak`, `masteryLevel`, `lastReviewedAt` und `updatedAt`. `masteryLevel` bleibt auf den Bereich von 0 bis 5 begrenzt.
+
+Für die Session gilt:
+
+- `correctAnswers` zählt richtige Versuche.
+- `incorrectAnswers` zählt falsche Versuche.
+- `totalCards` bleibt die Anzahl eindeutiger Karten der Runde.
+- `completedCardIds` enthält nur Karten, die ihr individuelles Abschlussziel vollständig erreicht haben.
+- Der Fortschritt basiert auf vollständig gefestigten eindeutigen Karten und nicht auf der Anzahl der Versuche.
+- Schwierige Karten werden weiterhin anhand ihrer Fehler in der aktuellen Runde ermittelt.
+
+Der adaptive Zustand bleibt vollständig transient. Persistiertes Karten- und Deck-Datenmodell, localStorage-Schema, Backup-Format und Import-Format werden nicht verändert; eine Migration ist nicht erforderlich.
 
 ## Multiple-Choice-Lernmodus
 
@@ -61,18 +188,13 @@ Vor dem Start muss geprüft werden, ob neben der korrekten Antwort mindestens zw
 
 In beiden Fällen muss die Oberfläche verständlich erklären, weshalb nicht die regulären drei Optionen angeboten werden können. Die genaue Produktentscheidung und die daraus folgende minimale Deckgröße sind noch offen.
 
-### Wiederholungsprinzip und Fehlerdurchgänge
+### Wiederholungsprinzip und adaptive Lernrunde
 
-Multiple Choice soll nicht die bestehende Strategie übernehmen, eine falsch beantwortete Karte bereits nach wenigen anderen Karten erneut zu zeigen. Stattdessen arbeitet eine Runde in klar getrennten Durchgängen:
+Multiple Choice erhält nach seiner Implementierung keine eigene Fehlerdurchgangslogik. Der Modus verwendet stattdessen ebenfalls das zentrale, unter [Adaptive Lernrunden](#adaptive-lernrunden) beschriebene Rundensystem mit garantiertem ersten Durchgang, individuellen Abschlusskriterien, Mindestabstand und adaptiver Festigung.
 
-1. Im ersten Durchgang werden alle für die Runde vorgesehenen Karten genau einmal gezeigt.
-2. Falsch beantwortete Karten werden gesammelt, aber nicht sofort erneut eingereiht.
-3. Nach Abschluss des Durchgangs beginnt ein neuer Fehlerdurchgang, der nur die zuvor falsch beantworteten Karten enthält.
-4. Karten, die auch in diesem Fehlerdurchgang falsch beantwortet werden, bleiben für den nächsten Fehlerdurchgang vorgemerkt.
-5. Richtig beantwortete Karten verlassen die Fehlermenge.
-6. Die Runde endet, sobald jede Karte nach ihrem jeweils letzten Fehler in einem späteren Durchgang korrekt beantwortet wurde.
+Das Ergebnis einer Multiple-Choice-Auswahl wird dabei als richtiger oder falscher Versuch an denselben Scheduler übergeben. Multiple-Choice-spezifisch bleiben die Erzeugung und Darstellung der Antwortoptionen, das Auswahlfeedback sowie die noch festzulegende schwächere Mastery-Gewichtung.
 
-Dadurch liegt zwischen einem Fehler und der nächsten Prüfung derselben Karte ausreichend Abstand. Die Reihenfolge innerhalb eines Fehlerdurchgangs kann neu gemischt werden, solange jede enthaltene Karte einmal gezeigt wird und die Durchgangsgrenzen erhalten bleiben.
+Bis zur Umsetzung von Multiple Choice gilt das adaptive Rundensystem für Selbstbewertung und Texteingabe.
 
 ### Mastery und Lerngewichtung
 

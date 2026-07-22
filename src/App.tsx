@@ -233,7 +233,8 @@ export default function App() {
       const completedSession = study.session
       const difficultCards = study.difficultCardIds.flatMap((cardId) => {
         const card = selectedDeck.cards.find((entry) => entry.id === cardId)
-        const mistakeCount = completedSession.incorrectByCardId[cardId] ?? 0
+        const mistakeCount =
+          completedSession.cardStates[cardId]?.incorrectAnswers ?? 0
         return card ? [{ card, mistakeCount }] : []
       })
       return (

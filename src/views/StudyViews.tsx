@@ -36,7 +36,8 @@ const directionOptions: Array<{
   {
     value: 'mixed',
     title: 'Gemischt',
-    description: 'Die Richtung wird bei jeder Karte neu gewählt.',
+    description:
+      'Für jede Karte wird eine Richtung festgelegt und bei Wiederholungen beibehalten.',
   },
 ]
 
@@ -71,7 +72,7 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
       <PageIntro
         eyebrow={deck.name}
         title="Lernrunde vorbereiten"
-        description={`${deck.cards.length} ${deck.cards.length === 1 ? 'Karte wartet' : 'Karten warten'} auf dich. Falsche Antworten kommen später noch einmal.`}
+        description={`${deck.cards.length} ${deck.cards.length === 1 ? 'Karte wartet' : 'Karten warten'} auf dich. Zuerst wird jede Karte einmal gezeigt.`}
       />
 
       <section className="setup-panel surface" aria-label="Einstellungen der Lernrunde">
@@ -151,7 +152,10 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
 
       <aside className="notice-box" aria-label="Hinweis zur Lernrunde">
         <strong>So funktioniert die Runde</strong>
-        <p>Jede Karte muss einmal richtig beantwortet werden. Unsichere Karten tauchen automatisch erneut auf.</p>
+        <p>
+          Zuerst siehst du jede Karte einmal. Danach werden neue, unsichere
+          und falsch beantwortete Karten wiederholt, bis sie gefestigt sind.
+        </p>
       </aside>
     </main>
   )
@@ -272,7 +276,7 @@ export function StudySessionView({
       <section className="session-progress" aria-label="Fortschritt der Lernrunde">
         <div className="session-progress__copy">
           <span>
-            {completedCards} von {totalCards} Karten geschafft
+            {completedCards} von {totalCards} Karten gefestigt
           </span>
           <strong>{Math.round(progress)} %</strong>
         </div>
@@ -489,7 +493,7 @@ export function StudyCompleteView({
         <span className="completion-hero__seal" aria-hidden="true">完</span>
         <p className="eyebrow">{deckName}</p>
         <h1>Level geschafft!</h1>
-        <p>Du hast jede Karte dieser Runde mindestens einmal gewusst.</p>
+        <p>Du hast das Rundenziel für jede Karte erreicht.</p>
       </section>
 
       <section className="result-grid" aria-label="Ergebnis">
