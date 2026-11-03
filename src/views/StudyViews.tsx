@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageIntro } from '../components/PageIntro'
 import {
@@ -181,6 +181,7 @@ export function StudySetupView({ deck, onStart }: StudySetupViewProps) {
 }
 
 interface StudySessionViewProps {
+  notice?: ReactNode
   deckName: string
   answerMethod: StudyAnswerMethod
   prompt: string
@@ -206,6 +207,7 @@ interface TypedAnswerFeedback {
 }
 
 export function StudySessionView({
+  notice,
   deckName,
   answerMethod,
   prompt,
@@ -295,6 +297,7 @@ export function StudySessionView({
 
   return (
     <main ref={studyPageRef} id="main-content" className="study-page">
+      {notice}
       <div className="study-toolbar">
         <div>
           <p className="eyebrow">Lernrunde</p>

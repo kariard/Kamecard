@@ -397,7 +397,13 @@ export function recoverAppData(value: unknown): RecoveredAppData | undefined {
   const seenDeckIds = new Set<string>()
 
   value.decks.forEach((candidate, index) => {
-    const result = validateDeck(candidate)
+    // Validate the deck metadata separately so one broken card cannot discard
+    // all its healthy siblings. Do not invent missing IDs or metadata.
+    if (!isRecord(candidate) || !Array.isArray(candidate.cards)) {
+      errors.push(`decks[${index}] ist kein gültiges Deck.`)
+      return
+    }
+    const result = validateDeck({ ...candidate, cards: [] })
 
     if (!result.ok) {
       errors.push(
@@ -412,7 +418,26 @@ export function recoverAppData(value: unknown): RecoveredAppData | undefined {
     }
 
     seenDeckIds.add(result.value.id)
-    decks.push(result.value)
+    const cards: Card[] = []
+    const seenCardIds = new Set<string>()
+    candidate.cards.forEach((candidateCard, cardIndex) => {
+      const cardResult = validateCard(candidateCard)
+      if (!cardResult.ok) {
+        errors.push(
+          ...cardResult.errors.map(
+            (error) => `decks[${index}].cards[${cardIndex}]: ${error}`,
+          ),
+        )
+        return
+      }
+      if (seenCardIds.has(cardResult.value.id)) {
+        errors.push(`decks[${index}].cards[${cardIndex}] hat eine bereits verwendete ID.`)
+        return
+      }
+      seenCardIds.add(cardResult.value.id)
+      cards.push(cardResult.value)
+    })
+    decks.push({ ...result.value, cards })
   })
 
   return {

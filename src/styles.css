@@ -165,6 +165,22 @@ label.button:has(+ input:disabled) {
   background: var(--moss-100);
 }
 
+.app-notice--warning {
+  color: var(--coral-700);
+  border-color: #e9bfb3;
+  background: var(--coral-50);
+}
+
+.app-notice > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.study-page > .app-notice {
+  width: 100%;
+  margin: 0 0 0.75rem;
+}
+
 .skip-link {
   position: fixed;
   z-index: 100;
@@ -1822,6 +1838,18 @@ label.button:has(+ input:disabled) {
   align-items: center;
   margin: 0;
   gap: 8px;
+}
+
+.study-page--typing > .app-notice {
+  position: sticky;
+  top: 0;
+  flex: 0 0 auto;
+  max-height: 25%;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  overflow: auto;
+  align-items: flex-start;
+  font-size: 0.8rem;
 }
 
 .study-page--typing .study-toolbar > div {

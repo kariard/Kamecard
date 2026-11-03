@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AppHeader } from './components/AppHeader'
+import { AppNotice } from './components/AppNotice'
 import { downloadDeckBackup, downloadFullBackup, parseBackupJson } from './features/backup'
 import {
   isStudySessionComplete,
@@ -89,6 +90,17 @@ export default function App() {
       },
     )
   }
+
+  const notice = (
+    <AppNotice
+      message={storageMessage || appMessage}
+      isStorageWarning={Boolean(storageMessage)}
+      onDismiss={() => {
+        dismissStorageMessage()
+        setAppMessage('')
+      }}
+    />
+  )
 
   function renderRoute() {
     if (route.name === 'overview') {
@@ -210,6 +222,7 @@ export default function App() {
       const answerMethod = study.session.answerMethod
       return (
         <StudySessionView
+          notice={notice}
           deckName={selectedDeck.name}
           answerMethod={answerMethod}
           prompt={study.current?.promptText ?? ''}
@@ -285,21 +298,7 @@ export default function App() {
           onBack={route.name === 'overview' ? undefined : backFromCurrentRoute}
         />
       ) : null}
-      {storageMessage || appMessage ? (
-        <div className="app-notice" role="status">
-          <span>{storageMessage || appMessage}</span>
-          <button
-            type="button"
-            onClick={() => {
-              dismissStorageMessage()
-              setAppMessage('')
-            }}
-            aria-label="Hinweis schließen"
-          >
-            ×
-          </button>
-        </div>
-      ) : null}
+      {route.name !== 'study-session' ? notice : null}
       {renderRoute()}
     </div>
   )

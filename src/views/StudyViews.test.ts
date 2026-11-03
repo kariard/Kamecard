@@ -5,6 +5,7 @@ import type { StorageLike } from '../storage'
 import type { Card, Deck } from '../types/models'
 import { startStudyWithSelectedOptions } from './studySetupSelection'
 import { StudySessionView, StudySetupView } from './StudyViews'
+import { AppNotice } from '../components/AppNotice'
 
 const timestamp = '2026-01-01T00:00:00.000Z'
 
@@ -223,4 +224,26 @@ describe('StudySessionView adaptive progress', () => {
     expect(markup).toContain('3 gewusst')
     expect(markup).toContain('1 nicht gewusst')
   })
+})
+
+describe('StudySessionView storage warnings', () => {
+  it.each(['typed-answer', 'self-assessment'] as const)(
+    'places the storage alert inside the study viewport before the controls (%s)',
+    (answerMethod) => {
+      const markup = renderToStaticMarkup(createElement(StudySessionView, {
+        deckName: 'Testdeck', answerMethod, prompt: '木', answer: 'き',
+        isFlipped: false, progress: 0, completedCards: 0, totalCards: 1,
+        correctCount: 0, incorrectCount: 0,
+        onReveal: () => undefined, onRate: () => false,
+        onContinueAfterTypedAnswer: () => undefined, onQuit: () => undefined,
+        notice: createElement(AppNotice, {
+          message: 'Speicher voll', isStorageWarning: true, onDismiss: () => undefined,
+        }),
+      }))
+      expect(markup.indexOf('role="alert"')).toBeGreaterThan(markup.indexOf('<main'))
+      expect(markup.indexOf('role="alert"')).toBeLessThan(markup.indexOf('study-toolbar'))
+      expect(markup.match(/Speicher voll/g)).toHaveLength(1)
+      expect(markup).toContain('aria-label="Hinweis schließen"')
+    },
+  )
 })

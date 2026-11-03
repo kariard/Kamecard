@@ -3,6 +3,7 @@ import type { AppData } from '../types/models'
 import { recoverAppData, validateAppData } from './validation'
 
 export const APP_DATA_STORAGE_KEY = 'kamecard.app-data'
+export const APP_DATA_RECOVERY_STORAGE_KEY = `${APP_DATA_STORAGE_KEY}.recovery`
 
 export interface StorageLike {
   getItem(key: string): string | null
@@ -57,6 +58,30 @@ export class LocalStorageAppDataStore {
     }
 
     return this.providedStorage ?? getBrowserStorage()
+  }
+
+  private preserveInvalidData(storage: StorageLike): void {
+    const original = storage.getItem(this.key)
+    if (original === null) return
+
+    try {
+      if (validateAppData(JSON.parse(original) as unknown).ok) return
+    } catch {
+      // Preserve malformed JSON verbatim as well as structurally invalid data.
+    }
+
+    // Keep earlier recoveries, and reuse an existing identical copy on retries.
+    // A failed backup must abort the write to the main key (e.g. full storage).
+    const recoveryKey = `${this.key}.recovery`
+    for (let index = 0; ; index += 1) {
+      const key = index === 0 ? recoveryKey : `${recoveryKey}.${index}`
+      const existing = storage.getItem(key)
+      if (existing === original) return
+      if (existing === null) {
+        storage.setItem(key, original)
+        return
+      }
+    }
   }
 
   load(): StorageLoadResult {
@@ -124,7 +149,7 @@ export class LocalStorageAppDataStore {
         warning:
           recovery.errors.length === 0
             ? 'Die lokalen Daten wurden vorsichtig wiederhergestellt.'
-            : `${recovery.errors.length} beschädigte Einträge wurden beim Laden ausgelassen.`,
+            : 'Gesunde Karten wurden wiederhergestellt. Beschädigte oder doppelte Einträge wurden ausgelassen. Die Originaldaten werden vor dem nächsten Speichern separat gesichert.',
       }
     }
 
@@ -151,6 +176,15 @@ export class LocalStorageAppDataStore {
       return {
         ok: false,
         error: `Die Daten sind ungültig: ${validation.errors[0] ?? 'Unbekannter Validierungsfehler'}`,
+      }
+    }
+
+    try {
+      this.preserveInvalidData(storage)
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Speichern abgebrochen: Die vorhandenen Daten konnten nicht sicher gelesen oder gesichert werden. Sie wurden nicht überschrieben. Änderungen sind nur vorübergehend. ${errorMessage(error)}`,
       }
     }
 
