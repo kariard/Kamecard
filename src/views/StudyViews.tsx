@@ -8,6 +8,7 @@ import {
   type TypedAnswerAttempt,
 } from '../features/study'
 import { loadStudyPreferences } from '../storage'
+import { useStudyKeyboardLayout } from '../hooks/useStudyKeyboardLayout'
 import type { Card, Deck, StudyDirection } from '../types/models'
 import { createStudyDirectionPreviews } from './studyDirectionPreview'
 import { startStudyWithSelectedOptions } from './studySetupSelection'
@@ -225,12 +226,20 @@ export function StudySessionView({
   const [typedFeedback, setTypedFeedback] =
     useState<TypedAnswerFeedback | null>(null)
   const typedAnswerInputRef = useRef<HTMLInputElement>(null)
+  const typedAnswerCardRef = useRef<HTMLDivElement>(null)
   const hasFocusedTypedAnswerRef = useRef(false)
   const typedAttemptRef = useRef<TypedAnswerAttempt<boolean>>(
     createTypedAnswerAttempt(),
   )
   const usesTypedAnswer = answerMethod === 'typed-answer'
+  const studyPageRef = useStudyKeyboardLayout(usesTypedAnswer)
   const displayedPrompt = typedFeedback?.prompt ?? prompt
+
+  useEffect(() => {
+    if (typedFeedback === null && typedAnswerCardRef.current) {
+      typedAnswerCardRef.current.scrollTop = 0
+    }
+  }, [displayedPrompt, typedFeedback])
 
   useEffect(() => {
     if (usesTypedAnswer && typedFeedback === null) {
@@ -238,7 +247,11 @@ export function StudySessionView({
         const input = typedAnswerInputRef.current
         if (!input) return
 
-        focusTypedAnswerInput(input, !hasFocusedTypedAnswerRef.current)
+        focusTypedAnswerInput(
+          input,
+          !hasFocusedTypedAnswerRef.current
+            || window.matchMedia('(max-width: 900px) and (pointer: coarse)').matches,
+        )
         hasFocusedTypedAnswerRef.current = true
       })
 
@@ -281,7 +294,7 @@ export function StudySessionView({
   }
 
   return (
-    <main id="main-content" className="study-page">
+    <main ref={studyPageRef} id="main-content" className="study-page">
       <div className="study-toolbar">
         <div>
           <p className="eyebrow">Lernrunde</p>
@@ -316,7 +329,13 @@ export function StudySessionView({
       >
         {usesTypedAnswer ? (
           <>
-            <div className="typed-answer-card">
+            <div
+              ref={typedAnswerCardRef}
+              className="typed-answer-card"
+              tabIndex={0}
+              role="region"
+              aria-label="Aufgabe"
+            >
               <span className="field-caption">Aufgabe</span>
               <strong>{displayedPrompt}</strong>
               <span className="flip-card__hint">

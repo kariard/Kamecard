@@ -1800,6 +1800,112 @@ label.button:has(+ input:disabled) {
   }
 }
 
+/* The visual viewport follows the iOS keyboard and its automatic page pan. */
+.study-page--typing {
+  position: fixed;
+  z-index: 20;
+  top: var(--study-visible-top, 0px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: var(--study-visible-height, 100dvh);
+  margin: 0;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+  overflow: auto;
+  background: var(--cream);
+  gap: 8px;
+}
+
+.study-page--typing .study-toolbar {
+  flex: 0 0 auto;
+  align-items: center;
+  margin: 0;
+  gap: 8px;
+}
+
+.study-page--typing .study-toolbar > div {
+  min-width: 0;
+}
+
+.study-page--typing .study-toolbar h1 {
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.study-page--typing .study-toolbar .button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+}
+
+.study-page--typing .eyebrow,
+.study-page--typing .session-progress,
+.study-page--typing .study-score,
+.study-page--typing .flip-card__hint,
+.study-page--typing #typed-answer-help {
+  display: none;
+}
+
+.study-page--typing .study-stage {
+  flex: 1 1 auto;
+  min-height: 240px;
+  gap: 8px;
+}
+
+.study-page--typing .typed-answer-card {
+  flex: 1 1 0;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  /* Auto margins center short questions without making the start of long
+     questions unreachable when the card needs to scroll. */
+  justify-content: flex-start;
+  overscroll-behavior: contain;
+}
+
+.study-page--typing .typed-answer-card .field-caption {
+  display: none;
+}
+
+.study-page--typing .typed-answer-card strong {
+  flex-shrink: 0;
+  margin-block: auto;
+}
+
+.study-page--typing .typed-answer-form {
+  flex: 0 0 auto;
+  max-height: 65%;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  scroll-margin: 0;
+}
+
+.study-page--typing .typed-answer-form > label {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.study-page--typing .typed-answer-input {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+}
+
+.study-page--typing .typed-answer-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 8px;
+  background: var(--paper);
+}
+
+.study-page--typing .button--study {
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
