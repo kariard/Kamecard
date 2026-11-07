@@ -228,12 +228,13 @@ export default function App() {
           prompt={study.current?.promptText ?? ''}
           answer={study.current?.answerText ?? ''}
           isFlipped={study.isFlipped}
+          hasRevealed={study.hasRevealed}
           progress={study.progress.percent}
           completedCards={study.progress.completedCards}
           totalCards={study.progress.totalCards}
           correctCount={study.session.correctAnswers}
           incorrectCount={study.session.incorrectAnswers}
-          onReveal={study.reveal}
+          onFlip={study.flip}
           onRate={(knew) => {
             const result = study.rate(knew)
             if (!result) return false

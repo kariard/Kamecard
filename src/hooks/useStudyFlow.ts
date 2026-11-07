@@ -17,6 +17,7 @@ export function useStudyFlow(
 ) {
   const [session, setSession] = useState<StudySession | null>(null)
   const [isFlipped, setIsFlipped] = useState(false)
+  const [hasRevealed, setHasRevealed] = useState(false)
   const lastRatedSessionRef = useRef<StudySession | null>(null)
 
   const current = useMemo(
@@ -36,6 +37,7 @@ export function useStudyFlow(
       createStudySession(selectedCards, direction, random, answerMethod),
     )
     setIsFlipped(false)
+    setHasRevealed(false)
   }
 
   function rate(knew: boolean): StudyAnswerResult | undefined {
@@ -63,6 +65,7 @@ export function useStudyFlow(
 
     setSession(result.session)
     setIsFlipped(false)
+    setHasRevealed(false)
     return result
   }
 
@@ -70,6 +73,7 @@ export function useStudyFlow(
     lastRatedSessionRef.current = null
     setSession(null)
     setIsFlipped(false)
+    setHasRevealed(false)
   }
 
   return {
@@ -78,7 +82,11 @@ export function useStudyFlow(
     progress,
     difficultCardIds,
     isFlipped,
-    reveal: () => setIsFlipped(true),
+    hasRevealed,
+    flip: () => {
+      setIsFlipped((flipped) => !flipped)
+      setHasRevealed(true)
+    },
     begin,
     rate,
     reset,

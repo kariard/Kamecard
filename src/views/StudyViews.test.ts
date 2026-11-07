@@ -200,6 +200,26 @@ describe('StudySetupView preferences', () => {
 })
 
 describe('StudySessionView adaptive progress', () => {
+  it.each([false, true])('behält die Bewertung nach dem Aufdecken bei (umgedreht: %s)', (isFlipped) => {
+    const markup = renderToStaticMarkup(
+      createElement(StudySessionView, {
+        deckName: 'Hiragana', answerMethod: 'self-assessment',
+        prompt: 'と', answer: 'to', isFlipped, hasRevealed: true,
+        progress: 0, completedCards: 0, totalCards: 1,
+        correctCount: 0, incorrectCount: 0,
+        onFlip: () => undefined, onRate: () => false,
+        onContinueAfterTypedAnswer: () => undefined, onQuit: () => undefined,
+      }),
+    )
+
+    expect(markup).toContain('button--correct')
+    expect(markup).toContain('button--incorrect')
+    expect(markup).not.toContain('>Antwort anzeigen</button>')
+    expect(markup).toContain(isFlipped
+      ? 'Antwort: to. Aufgabe anzeigen'
+      : 'Karte: と. Antwort anzeigen')
+  })
+
   it('unterscheidet gefestigte Karten von Antwortversuchen', () => {
     const markup = renderToStaticMarkup(
       createElement(StudySessionView, {
@@ -208,12 +228,13 @@ describe('StudySessionView adaptive progress', () => {
         prompt: 'Haus',
         answer: 'maison',
         isFlipped: true,
+        hasRevealed: true,
         progress: 50,
         completedCards: 1,
         totalCards: 2,
         correctCount: 3,
         incorrectCount: 1,
-        onReveal: () => undefined,
+        onFlip: () => undefined,
         onRate: () => false,
         onContinueAfterTypedAnswer: () => undefined,
         onQuit: () => undefined,
@@ -232,9 +253,9 @@ describe('StudySessionView storage warnings', () => {
     (answerMethod) => {
       const markup = renderToStaticMarkup(createElement(StudySessionView, {
         deckName: 'Testdeck', answerMethod, prompt: '木', answer: 'き',
-        isFlipped: false, progress: 0, completedCards: 0, totalCards: 1,
+        isFlipped: false, hasRevealed: false, progress: 0, completedCards: 0, totalCards: 1,
         correctCount: 0, incorrectCount: 0,
-        onReveal: () => undefined, onRate: () => false,
+        onFlip: () => undefined, onRate: () => false,
         onContinueAfterTypedAnswer: () => undefined, onQuit: () => undefined,
         notice: createElement(AppNotice, {
           message: 'Speicher voll', isStorageWarning: true, onDismiss: () => undefined,

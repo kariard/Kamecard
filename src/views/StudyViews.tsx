@@ -187,12 +187,13 @@ interface StudySessionViewProps {
   prompt: string
   answer: string
   isFlipped: boolean
+  hasRevealed: boolean
   progress: number
   completedCards: number
   totalCards: number
   correctCount: number
   incorrectCount: number
-  onReveal: () => void
+  onFlip: () => void
   onRate: (knew: boolean) => boolean
   onContinueAfterTypedAnswer: (isComplete: boolean) => void
   onQuit: () => void
@@ -213,12 +214,13 @@ export function StudySessionView({
   prompt,
   answer,
   isFlipped,
+  hasRevealed,
   progress,
   completedCards,
   totalCards,
   correctCount,
   incorrectCount,
-  onReveal,
+  onFlip,
   onRate,
   onContinueAfterTypedAnswer,
   onQuit,
@@ -429,12 +431,10 @@ export function StudySessionView({
             <button
               className={`flip-card ${isFlipped ? 'flip-card--flipped' : ''}`}
               type="button"
-              onClick={() => {
-                if (!isFlipped) onReveal()
-              }}
+              onClick={onFlip}
               aria-label={
                 isFlipped
-                  ? `Antwort: ${answer}`
+                  ? `Antwort: ${answer}. Aufgabe anzeigen`
                   : `Karte: ${prompt}. Antwort anzeigen`
               }
             >
@@ -450,18 +450,18 @@ export function StudySessionView({
                   <span className="field-caption">Antwort</span>
                   <strong>{answer}</strong>
                   <span className="flip-card__hint">
-                    Wie gut wusstest du es?
+                    Antippen zum Umdrehen
                   </span>
                 </span>
               </span>
             </button>
 
             <div className="study-actions">
-              {!isFlipped ? (
+              {!hasRevealed ? (
                 <button
                   className="button button--primary button--study"
                   type="button"
-                  onClick={onReveal}
+                  onClick={onFlip}
                 >
                   Antwort anzeigen
                 </button>
