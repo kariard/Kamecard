@@ -307,7 +307,7 @@ export function StudySessionView({
   }
 
   return (
-    <main ref={studyPageRef} id="main-content" className="study-page">
+    <main ref={studyPageRef} id="main-content" className={`study-page${usesTypedAnswer ? '' : ' study-page--swiping'}`}>
       {notice}
       <div className="study-toolbar">
         <div>
@@ -470,8 +470,7 @@ export function StudySessionView({
             </SwipeStudyCard>
 
             <p id="study-swipe-help" className="study-swipe-help">
-              Tippen: umdrehen · ← Nicht gewusst · → Gewusst<br />
-              ↓ Zurück · ↑ Vorwärts · Bewerten nach dem Aufdecken
+              ← Nicht gewusst · → Gewusst · ↓ Zurück · ↑ Vorwärts
             </p>
             <div className="study-navigation" aria-label="Karten durchblättern">
               <button type="button" className="button button--ghost" disabled={!canPrevious} onClick={() => onNavigate(-1)}>↓ Zurück</button>

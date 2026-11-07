@@ -1864,6 +1864,101 @@ label.button:has(+ input:disabled) {
   }
 }
 
+/* Keep the swipe surface and all controls inside the dynamic viewport. */
+html:has(.study-page--swiping),
+body:has(.study-page--swiping) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.study-page--swiping {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 860px);
+  height: 100dvh;
+  margin: 0 auto;
+  padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow: hidden;
+  overscroll-behavior: none;
+  gap: 8px;
+}
+
+.study-page--swiping .study-toolbar {
+  flex: 0 0 auto;
+  align-items: center;
+  margin: 0;
+  gap: 8px;
+}
+
+.study-page--swiping .study-toolbar > div { min-width: 0; }
+.study-page--swiping .study-toolbar h1 {
+  overflow: hidden;
+  font-size: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.study-page--swiping .eyebrow { margin-bottom: 2px; }
+
+.study-page--swiping .button {
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+}
+.study-page--swiping .study-toolbar > .button { flex-shrink: 0; }
+
+.study-page--swiping .session-progress {
+  flex: 0 0 auto;
+  margin: 0 0 4px;
+}
+.study-page--swiping .session-progress__copy { font-size: 0.85rem; }
+
+.study-page--swiping .study-stage {
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 6px;
+}
+.study-page--swiping .flip-card {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+.study-page--swiping .study-swipe-help {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 0.75rem;
+}
+.study-page--swiping .study-navigation,
+.study-page--swiping .study-actions {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.study-page--swiping .rating-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.study-page--swiping .study-score {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 0.75rem;
+}
+.study-page--swiping > .app-notice {
+  flex: 0 0 auto;
+  max-height: 20%;
+  margin: 0;
+  padding: 6px 10px;
+  overflow: auto;
+}
+
+@media (max-height: 540px) {
+  .study-page--swiping { gap: 4px; }
+  .study-page--swiping .eyebrow,
+  .study-page--swiping .flip-card__hint { display: none; }
+  .study-page--swiping .flip-card__face { padding: 8px 16px; }
+  .study-page--swiping .flip-card__face strong { font-size: 2rem; }
+  .study-page--swiping .study-stage { gap: 3px; }
+}
+
 /* The visual viewport follows the iOS keyboard and its automatic page pan. */
 .study-page--typing {
   position: fixed;
