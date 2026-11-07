@@ -470,7 +470,7 @@ export function StudySessionView({
             </SwipeStudyCard>
 
             <p id="study-swipe-help" className="study-swipe-help">
-              ← Nicht gewusst · → Gewusst · ↓ Zurück · ↑ Vorwärts
+              ← Gewusst · → Nicht gewusst · ↓ Zurück · ↑ Vorwärts
             </p>
             <div className="study-navigation" aria-label="Karten durchblättern">
               <button type="button" className="button button--ghost" disabled={!canPrevious} onClick={() => onNavigate(-1)}>↓ Zurück</button>

@@ -10,7 +10,7 @@ const cards: Card[] = ['a', 'b', 'c'].map((id) => ({
 
 describe('swipeAction', () => {
   it.each([
-    [80, 5, 'correct'], [-80, 5, 'incorrect'], [5, 80, 'previous'], [5, -80, 'next'],
+    [80, 5, 'incorrect'], [-80, 5, 'correct'], [5, 80, 'previous'], [5, -80, 'next'],
     [20, 0, undefined], [90, 90, undefined], [0, 0, undefined],
   ] as const)('interprets movement %s/%s as %s', (x, y, action) => {
     expect(swipeAction(x, y)).toBe(action)

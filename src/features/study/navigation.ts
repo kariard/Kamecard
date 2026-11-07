@@ -27,7 +27,7 @@ export function nextBrowsableItem(session: StudySession): StudyQueueItem | undef
 }
 
 export function swipeAction(x: number, y: number): 'correct' | 'incorrect' | 'previous' | 'next' | undefined {
-  if (Math.abs(x) >= 64 && Math.abs(x) > Math.abs(y) * 1.4) return x > 0 ? 'correct' : 'incorrect'
+  if (Math.abs(x) >= 64 && Math.abs(x) > Math.abs(y) * 1.4) return x < 0 ? 'correct' : 'incorrect'
   if (Math.abs(y) >= 64 && Math.abs(y) > Math.abs(x) * 1.4) return y > 0 ? 'previous' : 'next'
   return undefined
 }

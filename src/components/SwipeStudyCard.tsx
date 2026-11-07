@@ -20,7 +20,7 @@ export function SwipeStudyCard({ children, flipped, label, canRate, canPrevious,
   const [dragging, setDragging] = useState(false)
   const action = swipeAction(offset.x, offset.y)
   const horizontal = Math.abs(offset.x) > Math.abs(offset.y) * 1.4
-  const tint = canRate && horizontal ? (offset.x > 0 ? 'correct' : 'incorrect') : ''
+  const tint = canRate && horizontal ? (offset.x < 0 ? 'correct' : 'incorrect') : ''
   const hint = action === 'correct' || action === 'incorrect'
     ? canRate ? action === 'correct' ? '✓ Gewusst' : '× Nicht gewusst' : 'Bewerten erst nach dem Aufdecken und nur einmal'
     : action === 'previous' ? canPrevious ? '↓ Vorherige Karte' : 'Anfang der Runde'
