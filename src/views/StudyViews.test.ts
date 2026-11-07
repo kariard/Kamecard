@@ -200,6 +200,21 @@ describe('StudySetupView preferences', () => {
 })
 
 describe('StudySessionView adaptive progress', () => {
+  it('sperrt eine frühere Bewertung beim Nachschauen', () => {
+    const markup = renderToStaticMarkup(createElement(StudySessionView, {
+      deckName: 'Test', answerMethod: 'self-assessment', prompt: 'と', answer: 'to',
+      isFlipped: false, hasRevealed: true, previousRating: false,
+      canPrevious: true, canNext: true,
+      progress: 0, completedCards: 0, totalCards: 2, correctCount: 0, incorrectCount: 1,
+      onFlip: () => undefined, onRate: () => false,
+      onContinueAfterTypedAnswer: () => undefined, onQuit: () => undefined,
+    }))
+    expect(markup).toContain('Bereits als „Nicht gewusst“ bewertet.')
+    expect(markup).toMatch(/class="button button--correct" disabled=""/)
+    expect(markup).toMatch(/class="button button--incorrect" disabled=""/)
+    expect(markup).toContain('Karten durchblättern')
+  })
+
   it.each([false, true])('behält die Bewertung nach dem Aufdecken bei (umgedreht: %s)', (isFlipped) => {
     const markup = renderToStaticMarkup(
       createElement(StudySessionView, {
@@ -265,6 +280,10 @@ describe('StudySessionView storage warnings', () => {
       expect(markup.indexOf('role="alert"')).toBeLessThan(markup.indexOf('study-toolbar'))
       expect(markup.match(/Speicher voll/g)).toHaveLength(1)
       expect(markup).toContain('aria-label="Hinweis schließen"')
+      if (answerMethod === 'typed-answer') {
+        expect(markup).not.toContain('study-swipe-help')
+        expect(markup).not.toContain('Karten durchblättern')
+      }
     },
   )
 })

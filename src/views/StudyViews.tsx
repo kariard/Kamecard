@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SwipeStudyCard } from '../components/SwipeStudyCard'
 import { PageIntro } from '../components/PageIntro'
 import {
   createTypedAnswerAttempt,
@@ -188,6 +189,10 @@ interface StudySessionViewProps {
   answer: string
   isFlipped: boolean
   hasRevealed: boolean
+  previousRating?: boolean
+  canPrevious?: boolean
+  canNext?: boolean
+  onNavigate?: (direction: -1 | 1) => void
   progress: number
   completedCards: number
   totalCards: number
@@ -215,6 +220,10 @@ export function StudySessionView({
   answer,
   isFlipped,
   hasRevealed,
+  previousRating,
+  canPrevious = false,
+  canNext = false,
+  onNavigate = () => undefined,
   progress,
   completedCards,
   totalCards,
@@ -428,11 +437,15 @@ export function StudySessionView({
           </>
         ) : (
           <>
-            <button
-              className={`flip-card ${isFlipped ? 'flip-card--flipped' : ''}`}
-              type="button"
-              onClick={onFlip}
-              aria-label={
+            <SwipeStudyCard
+              flipped={isFlipped}
+              onFlip={onFlip}
+              canRate={hasRevealed && previousRating === undefined}
+              canPrevious={canPrevious}
+              canNext={canNext}
+              onRate={onRate}
+              onNavigate={onNavigate}
+              label={
                 isFlipped
                   ? `Antwort: ${answer}. Aufgabe anzeigen`
                   : `Karte: ${prompt}. Antwort anzeigen`
@@ -454,7 +467,19 @@ export function StudySessionView({
                   </span>
                 </span>
               </span>
-            </button>
+            </SwipeStudyCard>
+
+            <p id="study-swipe-help" className="study-swipe-help">
+              Tippen: umdrehen · ← Nicht gewusst · → Gewusst<br />
+              ↓ Zurück · ↑ Vorwärts · Bewerten nach dem Aufdecken
+            </p>
+            <div className="study-navigation" aria-label="Karten durchblättern">
+              <button type="button" className="button button--ghost" disabled={!canPrevious} onClick={() => onNavigate(-1)}>↓ Zurück</button>
+              <button type="button" className="button button--ghost" disabled={!canNext} onClick={() => onNavigate(1)}>↑ Vorwärts</button>
+            </div>
+            {previousRating !== undefined && <p role="status" className="study-swipe-help">
+              Bereits als „{previousRating ? 'Gewusst' : 'Nicht gewusst'}“ bewertet.
+            </p>}
 
             <div className="study-actions">
               {!hasRevealed ? (
@@ -469,6 +494,7 @@ export function StudySessionView({
                 <div className="rating-actions">
                   <button
                     className="button button--correct"
+                    disabled={previousRating !== undefined}
                     type="button"
                     onClick={() => onRate(true)}
                   >
@@ -476,6 +502,7 @@ export function StudySessionView({
                   </button>
                   <button
                     className="button button--incorrect"
+                    disabled={previousRating !== undefined}
                     type="button"
                     onClick={() => onRate(false)}
                   >

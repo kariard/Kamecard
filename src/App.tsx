@@ -229,6 +229,10 @@ export default function App() {
           answer={study.current?.answerText ?? ''}
           isFlipped={study.isFlipped}
           hasRevealed={study.hasRevealed}
+          previousRating={study.previousRating}
+          canPrevious={study.canPrevious}
+          canNext={study.canNext}
+          onNavigate={study.navigate}
           progress={study.progress.percent}
           completedCards={study.progress.completedCards}
           totalCards={study.progress.totalCards}

@@ -1342,6 +1342,54 @@ label.button:has(+ input:disabled) {
   transform-style: preserve-3d;
 }
 
+.swipe-card {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  transition: transform 180ms ease-out;
+}
+
+.swipe-card--dragging { transition: none; }
+
+.swipe-card__tint {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+
+.swipe-card__tint--correct { background: #65c681; }
+.swipe-card__tint--incorrect { background: #ef7777; }
+
+.swipe-card__feedback {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 90%;
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
+  background: #fffef9;
+  color: #24342b;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.study-swipe-help {
+  margin: 0.8rem 0 0;
+  color: var(--ink-soft);
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.study-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
 .flip-card--flipped .flip-card__inner {
   transform: rotateY(180deg);
 }
